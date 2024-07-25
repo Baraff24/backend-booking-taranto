@@ -30,8 +30,7 @@ INSTALLED_APPS = [
     'dj_rest_auth',
     'dj_rest_auth.registration',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',  # Google OAuth2
-    'allauth.socialaccount.providers.apple',  # Apple OAuth2
+    'drf_spectacular',
     'accounts',
 ]
 
@@ -126,7 +125,17 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
-    ]
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# Spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Backend Booking Taranto APIs',
+    'DESCRIPTION': 'GM Apartments Booking Taranto APIs',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }
 
 # Email
@@ -166,54 +175,3 @@ LOGIN_REDIRECT_URL = 'http://localhost:8000/api/v1/auth/login/'
 # Google OAuth2 Credentials
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
-
-# Apple OAuth2 Credentials
-APPLE_CLIENT_ID = config('APPLE_CLIENT_ID')
-APPLE_CLIENT_SECRET = config('APPLE_CLIENT_SECRET')
-APPLE_KEY = config('APPLE_KEY')
-
-SOCIALACCOUNT_PROVIDERS = {
-    # Create a Google OAuth2 application at https://console.developers.google.com/
-    "google": {
-        # For each OAuth based provider, either add a ``SocialApp``
-        # (``socialaccount`` app) containing the required client
-        # credentials, or list them here:
-        "APP": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "secret": GOOGLE_CLIENT_SECRET,
-            "key": ""
-        },
-        # These are provider-specific settings that can only be
-        # listed here:
-        "SCOPE": [
-            "profile",
-            "email",
-        ],
-        "AUTH_PARAMS": {
-            "access_type": "online",
-        }
-    },
-    "apple": {
-        "APP": {
-            # Your service identifier.
-            "client_id": APPLE_CLIENT_ID,
-
-            # The Key ID (visible in the "View Key Details" page).
-            "secret": APPLE_CLIENT_SECRET,
-
-            # Member ID/App ID Prefix -- you can find it below your name
-            # at the top right corner of the page, or it’s your App ID
-            # Prefix in your App ID.
-            "key": APPLE_KEY,
-
-            # The certificate you downloaded when generating the key.
-            "certificate_key": """-----BEGIN PRIVATE KEY-----
-MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgvz15Eh7LJP8e2W02
-B7LvPbo8e4B7R8asKLnhTs06fFOgCgYIKoZIzj0DAQehRANCAASIBWOEVBL8wsuX
-WJ81uzajtBPVpyHNBxE1H2mv5u5ssJRKc5IDKJ8e5BwfMUIjLC8AcFGP50WCkPPP
-9iGu4DQF
------END PRIVATE KEY-----
-"""
-        }
-    }
-}
