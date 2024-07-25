@@ -1,3 +1,6 @@
+"""
+This file contains the constants used in the accounts app.
+"""
 # STATUS_CHOICES VALUES
 COMPLETE = 'COMPLETE'
 PENDING_COMPLETE_DATA = 'PENDING_EXTRA_DATA'

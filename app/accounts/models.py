@@ -1,5 +1,9 @@
+"""
+This module contains the models for the accounts app.
+"""
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+
 from .constants import STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES, CUSTOMER
 
 
@@ -19,7 +23,7 @@ class User(AbstractUser):
     type = models.CharField(max_length=10, choices=TYPE_VALUES, default=CUSTOMER)
 
     def __str__(self):
-        return "{} {} - {}".format(self.first_name, self.last_name, self.email)
+        return str({f"{self.first_name} {self.last_name} - {self.email}"})
 
 
 class Structure(models.Model):
@@ -32,7 +36,7 @@ class Structure(models.Model):
     csi = models.CharField(max_length=20, unique=True)
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
 
 class Room(models.Model):
@@ -46,7 +50,7 @@ class Room(models.Model):
     max_people = models.IntegerField()
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
 
 class Reservation(models.Model):
@@ -67,7 +71,7 @@ class Reservation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return "{} - {}".format(self.user, self.room)
+        return str({f"{self.user} - {self.room}"})
 
 
 class Discount(models.Model):
@@ -84,4 +88,4 @@ class Discount(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.code
+        return str(self.code)

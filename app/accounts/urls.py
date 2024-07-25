@@ -1,3 +1,6 @@
+"""
+This module contains the URL patterns for the accounts app.
+"""
 from django.urls import path
 
 from .views import UsersListAPI, UserDetailAPI, CompleteProfileAPI
