@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    restart: always
+    command: "/scripts/docker/starter.sh"
+    ports:
+      - "8000:8000"
+    volumes:
+      - /app
+    depends_on:
+      - redis
+      - database
+    env_file:
+      - ./.env
+
+  redis:
+    image: redis:7
+
+  celery:
+    build: .
+    command: celery -A config worker -l info
+    volumes:
+      - .:/code
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+      - app
+      - database
+
+  database:
+    image: postgres:16.0
+    restart: always
+    volumes:
+      - ./data/postgresql:/var/lib/postgresql/data
+    environment:
+     - POSTGRES_PASSWORD=${DB_PASSWORD}
+     - POSTGRES_DB=${DB_NAME}
+     - POSTGRES_USER=${DB_USERNAME}
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
