@@ -3,8 +3,6 @@ Serializers for the accounts app.
 """
 
 from rest_framework import serializers
-
-from .functions import check_expiry_month, check_expiry_year, check_cvc
 from .models import User, Structure, Room, Reservation, Discount
 
 

@@ -1,9 +1,8 @@
 """
 This file contains all the functions and decorators used in the accounts app.
 """
-import datetime
 from functools import wraps
-from rest_framework import status, serializers
+from rest_framework import status
 from rest_framework.response import Response
 
 from allauth.account.models import EmailAddress

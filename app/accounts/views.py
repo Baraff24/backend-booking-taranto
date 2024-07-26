@@ -2,7 +2,6 @@
 This module contains the views of the accounts app.
 """
 import stripe
-import logging
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
@@ -21,7 +20,6 @@ from .serializers import UserSerializer, CompleteProfileSerializer, StructureSer
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-logger = logging.getLogger(__name__)
 
 class UsersListAPI(APIView):
     """
@@ -258,10 +256,8 @@ class StripeWebhookView(APIView):
                 payload, sig_header, endpoint_secret
             )
         except ValueError as e:
-            logger.error(f"Invalid payload: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except stripe.error.SignatureVerificationError as e:
-            logger.error(f"Signature verification error: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Handle the event
