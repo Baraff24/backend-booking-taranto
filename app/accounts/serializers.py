@@ -86,5 +86,9 @@ class PaymentIntentSerializer(serializers.Serializer):
     """
     Serializer for the payment intent information
     """
-    amount = serializers.IntegerField(required=True)
+    amount = serializers.FloatField(
+        min_value=0,
+        help_text="The amount to pay in the selected currency",
+        required=True
+    )
     currency = serializers.CharField(max_length=3, default='eur')

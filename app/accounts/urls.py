@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     StructureViewSet, RoomViewSet, ReservationViewSet,
-                    DiscountViewSet, CreatePaymentIntentView, StripeWebhookView)
+                    DiscountViewSet, CreatePaymentIntentView, StripeWebhook)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -21,6 +21,6 @@ urlpatterns = [
     path("users/complete-profile/", CompleteProfileAPI.as_view(),
          name="complete-profile"),
     path('create-payment-intent/', CreatePaymentIntentView.as_view(), name='create-payment-intent'),
-    path('stripe-webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
+    path('stripe-webhook/', StripeWebhook.as_view(), name='stripe-webhook'),
     path('', include(router.urls)),
 ]

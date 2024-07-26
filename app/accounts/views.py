@@ -13,10 +13,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .constants import PENDING_COMPLETE_DATA, COMPLETE
-from .functions import is_active, handle_payment_intent_succeeded
+from .functions import is_active, handle_payment_intent_succeeded, is_admin
 from .models import User, Structure, Room, Reservation, Discount
-from .serializers import UserSerializer, CompleteProfileSerializer, StructureSerializer, RoomSerializer, \
-    ReservationSerializer, DiscountSerializer, PaymentIntentSerializer
+from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
+                          RoomSerializer, ReservationSerializer, DiscountSerializer, PaymentIntentSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -147,8 +147,32 @@ class StructureViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'address']
 
     @method_decorator(is_active)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
 
 class RoomViewSet(viewsets.ModelViewSet):
@@ -164,8 +188,32 @@ class RoomViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'cost_per_night', 'max_people']
 
     @method_decorator(is_active)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
 
 class ReservationViewSet(viewsets.ModelViewSet):
@@ -181,8 +229,32 @@ class ReservationViewSet(viewsets.ModelViewSet):
     ordering_fields = ['check_in', 'check_out', 'total_cost']
 
     @method_decorator(is_active)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
 
 class DiscountViewSet(viewsets.ModelViewSet):
@@ -198,8 +270,32 @@ class DiscountViewSet(viewsets.ModelViewSet):
     ordering_fields = ['code', 'discount', 'start_date', 'end_date']
 
     @method_decorator(is_active)
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
 
 class CreatePaymentIntentView(APIView):
@@ -207,14 +303,14 @@ class CreatePaymentIntentView(APIView):
     API to create a payment intent for a reservation payment using Stripe
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = PaymentIntentSerializer
 
-    @staticmethod
     @method_decorator(is_active)
-    def post(request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         """
         Create a payment intent
         """
-        serializer = PaymentIntentSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             try:
                 validated_data = serializer.validated_data
@@ -230,22 +326,19 @@ class CreatePaymentIntentView(APIView):
                     'clientSecret': payment_intent['client_secret']
                 }, status=status.HTTP_200_OK)
             except Exception as e:
-                logger.error(f"Error creating payment intent: {str(e)}")
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class StripeWebhookView(APIView):
+class StripeWebhook(APIView):
     """
-    API to handle Stripe webhooks
+    API to create a payment intent for a reservation payment using Stripe
     """
-    permission_classes = []
-
-    def post(self, request, *args, **kwargs):
+    @method_decorator(csrf_exempt)
+    def post(self, request):
         """
-        Handle the Stripe webhook
+        API to handle Stripe webhooks
         """
         payload = request.body
         sig_header = request.META['HTTP_STRIPE_SIGNATURE']

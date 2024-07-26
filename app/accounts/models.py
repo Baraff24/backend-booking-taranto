@@ -6,7 +6,8 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-from .constants import STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES, CUSTOMER, ROOM_STATUS, AVAILABLE
+from .constants import (STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES,
+                        CUSTOMER, ROOM_STATUS, AVAILABLE)
 
 
 class User(AbstractUser):
