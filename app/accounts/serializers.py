@@ -3,6 +3,8 @@ Serializers for the accounts app.
 """
 
 from rest_framework import serializers
+
+from .functions import check_expiry_month, check_expiry_year, check_cvc
 from .models import User, Structure, Room, Reservation, Discount
 
 
@@ -80,3 +82,11 @@ class DiscountSerializer(serializers.ModelSerializer):
         if attrs['start_date'] >= attrs['end_date']:
             raise serializers.ValidationError("Start date must be before end date.")
         return attrs
+
+
+class PaymentIntentSerializer(serializers.Serializer):
+    """
+    Serializer for the payment intent information
+    """
+    amount = serializers.IntegerField(required=True)
+    currency = serializers.CharField(max_length=3, default='eur')

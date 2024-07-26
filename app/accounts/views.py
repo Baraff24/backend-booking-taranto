@@ -1,8 +1,12 @@
 """
 This module contains the views of the accounts app.
 """
+import stripe
+import logging
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, filters, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -10,11 +14,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .constants import PENDING_COMPLETE_DATA, COMPLETE
-from .functions import is_active
+from .functions import is_active, handle_payment_intent_succeeded
 from .models import User, Structure, Room, Reservation, Discount
 from .serializers import UserSerializer, CompleteProfileSerializer, StructureSerializer, RoomSerializer, \
-    ReservationSerializer, DiscountSerializer
+    ReservationSerializer, DiscountSerializer, PaymentIntentSerializer
 
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+logger = logging.getLogger(__name__)
 
 class UsersListAPI(APIView):
     """
@@ -141,6 +148,10 @@ class StructureViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'address', 'description']
     ordering_fields = ['name', 'address']
 
+    @method_decorator(is_active)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
 
 class RoomViewSet(viewsets.ModelViewSet):
     """
@@ -153,6 +164,10 @@ class RoomViewSet(viewsets.ModelViewSet):
     filterset_fields = ['structure', 'cost_per_night', 'max_people']
     search_fields = ['name', 'services']
     ordering_fields = ['name', 'cost_per_night', 'max_people']
+
+    @method_decorator(is_active)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
 
 class ReservationViewSet(viewsets.ModelViewSet):
@@ -167,6 +182,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name_on_reservation', 'last_name_on_reservation', 'email_on_reservation']
     ordering_fields = ['check_in', 'check_out', 'total_cost']
 
+    @method_decorator(is_active)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
 
 class DiscountViewSet(viewsets.ModelViewSet):
     """
@@ -179,3 +198,75 @@ class DiscountViewSet(viewsets.ModelViewSet):
     filterset_fields = ['code', 'start_date', 'end_date']
     search_fields = ['code', 'description']
     ordering_fields = ['code', 'discount', 'start_date', 'end_date']
+
+    @method_decorator(is_active)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+
+class CreatePaymentIntentView(APIView):
+    """
+    API to create a payment intent for a reservation payment using Stripe
+    """
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    @method_decorator(is_active)
+    def post(request, *args, **kwargs):
+        """
+        Create a payment intent
+        """
+        serializer = PaymentIntentSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                validated_data = serializer.validated_data
+                amount = validated_data['amount']
+                currency = validated_data.get('currency', 'eur')
+
+                payment_intent = stripe.PaymentIntent.create(
+                    amount=amount,
+                    currency=currency,
+                    payment_method_types=['card']
+                )
+                return Response({
+                    'clientSecret': payment_intent['client_secret']
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"Error creating payment intent: {str(e)}")
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StripeWebhookView(APIView):
+    """
+    API to handle Stripe webhooks
+    """
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+        """
+        Handle the Stripe webhook
+        """
+        payload = request.body
+        sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, endpoint_secret
+            )
+        except ValueError as e:
+            logger.error(f"Invalid payload: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except stripe.error.SignatureVerificationError as e:
+            logger.error(f"Signature verification error: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle the event
+        if event['type'] == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            handle_payment_intent_succeeded(payment_intent)
+
+        return Response({'status': 'success'}, status=status.HTTP_200_OK)

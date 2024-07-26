@@ -1,9 +1,9 @@
 """
 This file contains all the functions and decorators used in the accounts app.
 """
+import datetime
 from functools import wraps
-
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.response import Response
 
 from allauth.account.models import EmailAddress
@@ -13,7 +13,6 @@ from allauth.account.models import EmailAddress
 # DECORATORS #
 #####################################################################################
 
-# Decorator to check if user is active
 def is_active(view_func):
     """
     Decorator to check if user is active
@@ -31,3 +30,11 @@ def is_active(view_func):
                         status=status.HTTP_403_FORBIDDEN)
 
     return decorator
+
+
+#####################################################################################
+# FUNCTIONS #
+#####################################################################################
+def handle_payment_intent_succeeded(payment_intent):
+    # Implement your logic to handle successful payment here
+    pass

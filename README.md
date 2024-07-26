@@ -118,4 +118,6 @@ REDIS_BACKEND=redis://redis:6379/0
 NGINX_PORT=80
 ACME_DEFAULT_EMAIL=email@example.com
 DOMAIN=example.com
+STRIPE_PUBLISHABLE_KEY=stripekey
+STRIPE_SECRET_KEY=stripesecret
 ```

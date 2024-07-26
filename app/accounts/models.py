@@ -1,10 +1,12 @@
 """
 This module contains the models for the accounts app.
 """
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-from .constants import STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES, CUSTOMER
+from .constants import STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES, CUSTOMER, ROOM_STATUS, AVAILABLE
 
 
 class User(AbstractUser):
@@ -44,6 +46,7 @@ class Room(models.Model):
     Model that represents the room.
     """
     structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='rooms')
+    room_status = models.CharField(max_length=20, choices=ROOM_STATUS, default=AVAILABLE)
     name = models.CharField(max_length=100)
     services = models.TextField(blank=True)
     cost_per_night = models.DecimalField(max_digits=10, decimal_places=2)
@@ -59,10 +62,13 @@ class Reservation(models.Model):
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reservations')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='reservations')
+    reservation_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     check_in = models.DateField()
     check_out = models.DateField()
     number_of_people = models.IntegerField()
     total_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_intent_id = models.CharField(max_length=100, blank=True)
+    payed = models.BooleanField(default=False)
     first_name_on_reservation = models.CharField(max_length=100)
     last_name_on_reservation = models.CharField(max_length=100)
     phone_on_reservation = models.CharField(max_length=20)

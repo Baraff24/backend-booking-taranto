@@ -1,10 +1,14 @@
 """
 This module contains the tests for the accounts app.
 """
+import json
+from unittest.mock import patch
+
 import django.contrib.auth
+import stripe
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 
 User = django.contrib.auth.get_user_model()
 
@@ -92,3 +96,95 @@ class UserTests(APITestCase):
         self.assertEqual(self.user.last_name, 'Doe')
         self.assertEqual(self.user.telephone, '1122334455')
         self.assertEqual(self.user.status, 'complete')
+
+
+class CreatePaymentIntentViewTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('create-payment-intent')
+        self.user = self.setup_user()
+        self.client.force_authenticate(user=self.user)
+
+    @staticmethod
+    def setup_user():
+        from accounts.models import User
+        return User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='testpass'
+        )
+
+    @patch('stripe.PaymentIntent.create')
+    def test_create_payment_intent_success(self, mock_create):
+        mock_create.return_value = {
+            'client_secret': 'test_client_secret'
+        }
+        data = {
+            'amount': 1000,
+            'currency': 'eur'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('clientSecret', response.data)
+        self.assertEqual(response.data['clientSecret'], 'test_client_secret')
+
+    def test_create_payment_intent_missing_amount(self):
+        data = {
+            'currency': 'eur'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('amount', response.data)
+
+
+class StripeWebhookViewTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('stripe-webhook')
+
+    @patch('stripe.Webhook.construct_event')
+    def test_webhook_payment_intent_succeeded(self, mock_construct_event):
+        event_data = {
+            'id': 'evt_test',
+            'type': 'payment_intent.succeeded',
+            'data': {
+                'object': {
+                    'id': 'pi_test'
+                }
+            }
+        }
+        mock_construct_event.return_value = event_data
+
+        payload = json.dumps(event_data)
+        sig_header = 't=1492774577,v1=signature'
+
+        response = self.client.post(self.url, payload, format='json', HTTP_STRIPE_SIGNATURE=sig_header)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+
+    @patch('stripe.Webhook.construct_event')
+    def test_webhook_invalid_signature(self, mock_construct_event):
+        mock_construct_event.side_effect = stripe.error.SignatureVerificationError(
+            'Invalid signature', 'sig_test'
+        )
+
+        payload = json.dumps({
+            'id': 'evt_test',
+            'type': 'payment_intent.succeeded',
+        })
+        sig_header = 't=1492774577,v1=invalid_signature'
+
+        response = self.client.post(self.url, payload, format='json', HTTP_STRIPE_SIGNATURE=sig_header)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
+
+    @patch('stripe.Webhook.construct_event')
+    def test_webhook_invalid_payload(self, mock_construct_event):
+        mock_construct_event.side_effect = ValueError('Invalid payload')
+
+        payload = 'invalid_payload'
+        sig_header = 't=1492774577,v1=signature'
+
+        response = self.client.post(self.url, payload, format='json', HTTP_STRIPE_SIGNATURE=sig_header)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('error', response.data)
