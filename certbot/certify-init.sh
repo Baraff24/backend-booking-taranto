@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Waits for proxy to be available, then gets the first certificate.
 
