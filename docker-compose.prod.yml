@@ -12,6 +12,7 @@ services:
       - media_volume:/code/mediafiles
     depends_on:
       - redis
+      - database
 
   redis:
     image: redis:7
@@ -27,6 +28,21 @@ services:
     depends_on:
       - redis
       - app
+      - database
+
+  database:
+    image: postgres:16.0
+    restart: always
+    volumes:
+      - ./data/postgresql:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USERNAME}
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
 
   caddy:
     build: ./caddy
