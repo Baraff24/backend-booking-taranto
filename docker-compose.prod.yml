@@ -45,6 +45,7 @@ services:
       - certbot-certs:/etc/letsencrypt
     depends_on:
       - app
+      - certbot
     environment:
       - DOMAIN=${DOMAIN}
 
