@@ -19,6 +19,6 @@ export request_uri=\$request_uri
 #fi
 
 echo "Copying nginx.conf"
-envsubst < /etc/nginx/nginx.conf> /etc/nginx/conf.d/default.conf
+envsubst < /etc/nginx/nginx.conf > /etc/nginx/conf.d/default.conf
 
 nginx-debug -g 'daemon off;'
