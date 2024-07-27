@@ -12,11 +12,11 @@ fi
 export host=\$host
 export request_uri=\$request_uri
 
-echo "Checking for fullchain.pem"
-if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
-  echo "fullchain.pem does not exist - creating it"
-  certbot certonly --webroot -w /var/www/certbot -d ${DOMAIN} --agree-tos --email ${EMAIL} --no-eff-email --force-renewal
-fi
+#echo "Checking for fullchain.pem"
+#if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+#  echo "fullchain.pem does not exist - creating it"
+#  certbot certonly --webroot -w /var/www/certbot -d ${DOMAIN} --agree-tos --email ${EMAIL} --no-eff-email --force-renewal
+#fi
 
 echo "Copying nginx.conf"
 envsubst < /etc/nginx/nginx.conf> /etc/nginx/conf.d/default.conf
