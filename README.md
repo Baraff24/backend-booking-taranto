@@ -119,4 +119,5 @@ CADDY_EMAIL=email@example.com
 DOMAIN=example.com
 STRIPE_PUBLISHABLE_KEY=stripekey
 STRIPE_SECRET_KEY=stripesecret
+STRIPE_WEBHOOK_SECRET=whsec_7J9
 ```
