@@ -103,6 +103,8 @@ SERVE_MEDIA = True
 
 CORS_ALLOWED_ORIGINS = os.getenv('DJANGO_CORS_ALLOWED_ORIGINS').split(',')
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # Custom auth user model
 AUTH_USER_MODEL = 'accounts.User'
 
