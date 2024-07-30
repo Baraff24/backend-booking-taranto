@@ -101,3 +101,32 @@ class ReservationCalendarSerializer(serializers.ModelSerializer):
         fields = ['check_in', 'check_out', 'number_of_people', 'total_cost',
                   'first_name_on_reservation', 'last_name_on_reservation',
                   'email_on_reservation', 'phone_on_reservation', 'room']
+
+
+class CreateCheckoutSessionSerializer(serializers.Serializer):
+    room = serializers.IntegerField()
+    reservation = serializers.IntegerField()
+    number_of_people = serializers.IntegerField()
+
+    @staticmethod
+    def validate_room(value):
+        try:
+            Room.objects.get(id=value)
+        except Room.DoesNotExist:
+            raise serializers.ValidationError("Room does not exist.")
+        return value
+
+    @staticmethod
+    def validate_reservation(value):
+        try:
+            Reservation.objects.get(id=value)
+        except Reservation.DoesNotExist:
+            raise serializers.ValidationError("Reservation does not exist.")
+        return value
+
+    @staticmethod
+    def validate_number_of_people(value):
+        if value <= 0:
+            raise serializers.ValidationError("Number of people must be a positive integer.")
+        return value
+

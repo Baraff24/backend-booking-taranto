@@ -21,7 +21,8 @@ from .constants import PENDING_COMPLETE_DATA, COMPLETE
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
-                          RoomSerializer, ReservationSerializer, DiscountSerializer, ReservationCalendarSerializer)
+                          RoomSerializer, ReservationSerializer, DiscountSerializer, ReservationCalendarSerializer,
+                          CreateCheckoutSessionSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -654,50 +655,52 @@ class CreateCheckoutSessionLinkAPI(APIView):
     API to create a checkout session link for a reservation payment using Stripe
     """
     permission_classes = [IsAuthenticated]
-
+    serializer_class = CreateCheckoutSessionSerializer
     @method_decorator(is_active)
     def post(self, request):
         """
         Create a checkout session link
         """
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            room = Room.objects.get(id=data['room'])
+            structure = room.structure
+            cost_per_night = room.cost_per_night
+            number_of_people = data['number_of_people']
 
-        data = request.data
-        room = Room.objects.get(id=data['room'])
-        structure = room.structure
-        cost_per_night = room.cost_per_night
-        number_of_people = data['number_of_people']
-
-        line_items = [
-            {
-                'price_data': {
-                    'currency': 'eur',
-                    'product_data': {
-                        'name': f'{room.name} at {structure.name}',
-                        'images': [f'https://example.com/{room.name}.jpg'],
+            line_items = [
+                {
+                    'price_data': {
+                        'currency': 'eur',
+                        'product_data': {
+                            'name': f'{room.name} at {structure.name}',
+                            'images': [f'https://example.com/{room.name}.jpg'],
+                        },
+                        'unit_amount': int(cost_per_night * 100),
                     },
-                    'unit_amount': int(cost_per_night * 100),
+                    'quantity': number_of_people,
                 },
-                'quantity': number_of_people,
-            },
-        ]
+            ]
 
-        try:
-            # Create a new Checkout Session for the order
-            session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=line_items,
-                mode='payment',
-                success_url='https://example.com/success',
-                cancel_url='https://example.com/cancel',
-            )
+            try:
+                # Create a new Checkout Session for the order
+                session = stripe.checkout.Session.create(
+                    payment_method_types=['card'],
+                    line_items=line_items,
+                    mode='payment',
+                    success_url='https://example.com/success',
+                    cancel_url='https://example.com/cancel',
+                )
 
-            # Add the payment intent id to the reservation
-            reservation = Reservation.objects.get(id=data['reservation'])
-            reservation.payment_intent_id = session.payment_intent
-            reservation.paid = True
-            reservation.save()
+                # Add the payment intent id to the reservation
+                reservation = Reservation.objects.get(id=data['reservation'])
+                reservation.payment_intent_id = session.payment_intent
+                reservation.paid = True
+                reservation.save()
 
-            return Response({'id': session.id}, status=status.HTTP_200_OK)
+                return Response({'id': session.id}, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
