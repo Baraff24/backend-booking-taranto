@@ -76,7 +76,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         model = Reservation
         fields = ['check_in', 'check_out', 'number_of_people', 'discount',
                   'first_name_on_reservation', 'last_name_on_reservation',
-                  'email_on_reservation', 'phone_on_reservation', 'coupon_used']
+                  'email_on_reservation', 'phone_on_reservation', 'coupon_used', 'user', 'room']
         read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'paid']
 
     def validate(self, data):
@@ -86,8 +86,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         if data['check_in'] >= data['check_out']:
             raise serializers.ValidationError("Check-in date must be before check-out date.")
         if data['number_of_people'] > data['room'].max_people:
-            raise serializers.ValidationError(
-                "Number of people must be less than or equal to the maximum number of people allowed in the room.")
+            raise serializers.ValidationError("Number of people must be less than or equal to the maximum number of people allowed in the room.")
         return data
 
 
