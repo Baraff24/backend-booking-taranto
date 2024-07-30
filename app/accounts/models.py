@@ -67,7 +67,7 @@ class Reservation(models.Model):
     check_in = models.DateField()
     check_out = models.DateField()
     number_of_people = models.IntegerField()
-    total_cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     payment_intent_id = models.CharField(max_length=100, blank=True)
     paid = models.BooleanField(default=False)
     first_name_on_reservation = models.CharField(max_length=100)
