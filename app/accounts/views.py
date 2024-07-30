@@ -2,21 +2,26 @@
 This module contains the views of the accounts app.
 """
 import stripe
+from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
 from rest_framework import status, filters, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .constants import PENDING_COMPLETE_DATA, COMPLETE
-from .functions import is_active, handle_payment_intent_succeeded, is_admin
-from .models import User, Structure, Room, Reservation, Discount
+from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount
+from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
-                          RoomSerializer, ReservationSerializer, DiscountSerializer, PaymentIntentSerializer)
+                          RoomSerializer, ReservationSerializer, DiscountSerializer, ReservationCalendarSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -238,11 +243,6 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
     @method_decorator(is_active)
     @method_decorator(is_admin)
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
@@ -298,43 +298,127 @@ class DiscountViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-class CreatePaymentIntentView(APIView):
-    """
-    API to create a payment intent for a reservation payment using Stripe
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = PaymentIntentSerializer
+class GoogleCalendarInitAPI(APIView):
+    @staticmethod
+    def get(request):
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token"
+                }
+            },
+            redirect_uri=settings.GOOGLE_REDIRECT_URI,
+            scopes=['https://www.googleapis.com/auth/calendar']
+        )
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
 
-    @method_decorator(is_active)
-    def post(self, request, *args, **kwargs):
-        """
-        Create a payment intent
-        """
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            try:
-                validated_data = serializer.validated_data
-                amount = validated_data['amount']
-                currency = validated_data.get('currency', 'eur')
 
-                payment_intent = stripe.PaymentIntent.create(
-                    amount=amount,
-                    currency=currency,
-                    payment_method_types=['card']
-                )
-                return Response({
-                    'clientSecret': payment_intent['client_secret']
-                }, status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class GoogleCalendarRedirectAPI(APIView):
+    @staticmethod
+    def get(request):
+        code = request.GET.get('code')
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token"
+                }
+            },
+            redirect_uri=settings.GOOGLE_REDIRECT_URI,
+            scopes=['https://www.googleapis.com/auth/calendar']
+        )
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+
+        GoogleOAuthCredentials.objects.update_or_create(
+            id=1,
+            defaults={
+                'token': credentials.token,
+                'refresh_token': credentials.refresh_token,
+                'token_uri': credentials.token_uri,
+                'client_id': credentials.client_id,
+                'client_secret': credentials.client_secret,
+                'scopes': ' '.join(credentials.scopes)
+            }
+        )
+        return Response({'message': 'Google Calendar credentials have been successfully updated.'},
+                        status=status.HTTP_200_OK)
+
+
+# class CalendarEventsAPI(APIView):
+#     @staticmethod
+#     def get(request):
+#         try:
+#             creds = GoogleOAuthCredentials.objects.get(id=1)
+#             credentials = Credentials(
+#                 token=creds.token,
+#                 refresh_token=creds.refresh_token,
+#                 token_uri=creds.token_uri,
+#                 client_id=creds.client_id,
+#                 client_secret=creds.client_secret,
+#                 scopes=creds.scopes.split()
+#             )
+#             service = build('calendar', 'v3', credentials=credentials)
+#             events_result = service.events().list(calendarId='primary', maxResults=10, singleEvents=True,
+#                                                   orderBy='startTime').execute()
+#             events = events_result.get('items', [])
+#             return Response(events, status=status.HTTP_200_OK)
+#         except GoogleOAuthCredentials.DoesNotExist:
+#             return Response({'error': 'Credentials not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# class CreateCalendarEventAPI(APIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = ReservationCalendarSerializer
+#
+#     def post(self, request):
+#         try:
+#             creds = GoogleOAuthCredentials.objects.get(id=1)
+#             credentials = Credentials(
+#                 token=creds.token,
+#                 refresh_token=creds.refresh_token,
+#                 token_uri=creds.token_uri,
+#                 client_id=creds.client_id,
+#                 client_secret=creds.client_secret,
+#                 scopes=creds.scopes.split()
+#             )
+#             service = build('calendar', 'v3', credentials=credentials)
+#
+#             serializer = self.serializer_class(data=request.data)
+#             if serializer.is_valid():
+#                 reservation = serializer.validated_data
+#                 event = {
+#                     'summary': f"Reservation for {reservation['first_name_on_reservation']} {reservation['last_name_on_reservation']}",
+#                     'description': f"Email: {reservation['email_on_reservation']}\nPhone: {reservation['phone_on_reservation']}\nTotal Cost: {reservation['total_cost']}\nNumber of People: {reservation['number_of_people']}\nRoom: {reservation['room']['name']}, {reservation['room']['structure']}",
+#                     'start': {
+#                         'dateTime': reservation['check_in'].isoformat(),
+#                         'timeZone': 'UTC',
+#                     },
+#                     'end': {
+#                         'dateTime': reservation['check_out'].isoformat(),
+#                         'timeZone': 'UTC',
+#                     },
+#                 }
+#                 event = service.events().insert(calendarId='primary', body=event).execute()
+#                 return Response(event, status=status.HTTP_201_CREATED)
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         except GoogleOAuthCredentials.DoesNotExist:
+#             return Response({'error': 'Credentials not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class StripeWebhook(APIView):
     """
     API to create a payment intent for a reservation payment using Stripe
     """
+
     @method_decorator(csrf_exempt)
     def post(self, request):
         """
@@ -359,3 +443,261 @@ class StripeWebhook(APIView):
             handle_payment_intent_succeeded(payment_intent)
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
+
+
+class AvailableRoomsAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        room_ids = request.query_params.getlist('rooms')
+        try:
+            rooms = Room.objects.filter(id__in=room_ids)
+        except Room.DoesNotExist:
+            return Response({'error': 'One or more rooms do not exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+        available_dates = {}
+        try:
+            creds = GoogleOAuthCredentials.objects.get(id=1)
+            credentials = Credentials(
+                token=creds.token,
+                refresh_token=creds.refresh_token,
+                token_uri=creds.token_uri,
+                client_id=creds.client_id,
+                client_secret=creds.client_secret,
+                scopes=creds.scopes.split()
+            )
+            service = build('calendar', 'v3', credentials=credentials)
+
+            for room in rooms:
+                room_availability = []
+                today = datetime.now(timezone.utc).isoformat()
+                next_year = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+
+                # Get local reservations
+                local_reservations = Reservation.objects.filter(room=room, check_out__gte=today)
+
+                # Get Google Calendar events
+                events_result = service.events().list(
+                    calendarId='primary',
+                    timeMin=today,
+                    timeMax=next_year,
+                    singleEvents=True,
+                    orderBy='startTime'
+                ).execute()
+                events = events_result.get('items', [])
+
+                # Combine local reservations and Google Calendar events
+                busy_dates = []
+                for reservation in local_reservations:
+                    current_date = reservation.check_in
+                    while current_date <= reservation.check_out:
+                        busy_dates.append(current_date.strftime('%Y-%m-%d'))
+                        current_date += timedelta(days=1)
+
+                for event in events:
+                    start_date = datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date'))[:-1])
+                    end_date = datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date'))[:-1])
+                    current_date = start_date
+                    while current_date < end_date:
+                        busy_dates.append(current_date.strftime('%Y-%m-%d'))
+                        current_date += timedelta(days=1)
+
+                # Determine available dates
+                current_date = datetime.utcnow().date()
+                one_year_from_now = current_date + timedelta(days=365)
+                while current_date <= one_year_from_now:
+                    if current_date.strftime('%Y-%m-%d') not in busy_dates:
+                        room_availability.append(current_date.strftime('%Y-%m-%d'))
+                    current_date += timedelta(days=1)
+
+                available_dates[room.name] = room_availability
+
+            return Response(available_dates, status=status.HTTP_200_OK)
+
+        except GoogleOAuthCredentials.DoesNotExist:
+            return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class RentRoomAPI(APIView):
+    """
+    API to rent a room
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ReservationSerializer
+
+    @method_decorator(is_active)
+    def post(self, request):
+        """
+        Rent a room
+        """
+        user = request.user
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            room = serializer.validated_data['room']
+            check_in = serializer.validated_data['check_in']
+            check_out = serializer.validated_data['check_out']
+
+            # Check if the room is available in the local database
+            conflicting_reservations = Reservation.objects.filter(
+                room=room,
+                check_in__lt=check_out,
+                check_out__gt=check_in
+            )
+
+            if conflicting_reservations.exists():
+                return Response({'error': 'Room is not available for the selected dates.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if the room is available on Google Calendar
+            try:
+                creds = GoogleOAuthCredentials.objects.get(id=1)
+                credentials = Credentials(
+                    token=creds.token,
+                    refresh_token=creds.refresh_token,
+                    token_uri=creds.token_uri,
+                    client_id=creds.client_id,
+                    client_secret=creds.client_secret,
+                    scopes=creds.scopes.split()
+                )
+                service = build('calendar', 'v3', credentials=credentials)
+                events_result = service.events().list(
+                    calendarId='primary',
+                    timeMin=check_in.isoformat() + 'Z',
+                    timeMax=check_out.isoformat() + 'Z',
+                    singleEvents=True,
+                    orderBy='startTime'
+                ).execute()
+                events = events_result.get('items', [])
+
+                if events:
+                    return Response({'error': 'Room is not available for the selected dates due to existing Google Calendar events.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            except GoogleOAuthCredentials.DoesNotExist:
+                return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+            # If the room is available, create the reservation
+            reservation = Reservation(**serializer.validated_data)
+            reservation.user = user
+
+            # Calculate the total cost of the reservation
+            calculate_total_cost(reservation)
+            reservation.save()
+
+            # Create the event on Google Calendar
+            event = {
+                'summary': f"Reservation for {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}",
+                'description': (
+                    f"Email: {reservation.email_on_reservation}\n"
+                    f"Phone: {reservation.phone_on_reservation}\n"
+                    f"Total Cost: {reservation.total_cost}\n"
+                    f"Number of People: {reservation.number_of_people}\n"
+                    f"Room: {reservation.room.name}, {reservation.room.structure}"
+                ),
+                'start': {
+                    'dateTime': reservation.check_in.isoformat() + 'T00:00:00Z',
+                    'timeZone': 'UTC',
+                },
+                'end': {
+                    'dateTime': reservation.check_out.isoformat() + 'T00:00:00Z',
+                    'timeZone': 'UTC',
+                },
+                'location': reservation.room.structure.address,
+                'attendees': [
+                    {'email': reservation.email_on_reservation},
+                    # You can add more attendees if needed
+                ],
+                'reminders': {
+                    'useDefault': False,
+                    'overrides': [
+                        {'method': 'email', 'minutes': 24 * 60},  # 1 day before
+                        {'method': 'popup', 'minutes': 10},
+                    ],
+                },
+            }
+            service.events().insert(calendarId='primary', body=event).execute()
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CalculateDiscountAPI(APIView):
+    """
+    API to calculate the discount for a reservation
+    """
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(is_active)
+    def post(self, request):
+        """
+        Calculate the discount for a reservation
+        """
+        data = request.data
+        discount_code = data.get('discount_code')
+        reservation_id = data.get('reservation')
+
+        try:
+            reservation = Reservation.objects.get(id=reservation_id)
+            reservation.coupon_used = discount_code
+            calculate_total_cost(reservation)
+            discount_amount = calculate_discount(reservation)
+            reservation.save()
+            return Response({'total_cost': reservation.total_cost, 'discount_amount': discount_amount},
+                            status=status.HTTP_200_OK)
+        except Reservation.DoesNotExist:
+            return Response({'error': 'Reservation not found'}, status=status.HTTP_400_BAD_REQUEST)
+        except Discount.DoesNotExist:
+            return Response({'error': 'Discount code not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateCheckoutSessionLinkAPI(APIView):
+    """
+    API to create a checkout session link for a reservation payment using Stripe
+    """
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(is_active)
+    def post(self, request):
+        """
+        Create a checkout session link
+        """
+
+        data = request.data
+        room = Room.objects.get(id=data['room'])
+        structure = room.structure
+        cost_per_night = room.cost_per_night
+        number_of_people = data['number_of_people']
+
+        line_items = [
+            {
+                'price_data': {
+                    'currency': 'eur',
+                    'product_data': {
+                        'name': f'{room.name} at {structure.name}',
+                        'images': [f'https://example.com/{room.name}.jpg'],
+                    },
+                    'unit_amount': int(cost_per_night * 100),
+                },
+                'quantity': number_of_people,
+            },
+        ]
+
+        try:
+            # Create a new Checkout Session for the order
+            session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=line_items,
+                mode='payment',
+                success_url='https://example.com/success',
+                cancel_url='https://example.com/cancel',
+            )
+
+            # Add the payment intent id to the reservation
+            reservation = Reservation.objects.get(id=data['reservation'])
+            reservation.payment_intent_id = session.payment_intent
+            reservation.paid = True
+            reservation.save()
+
+            return Response({'id': session.id}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

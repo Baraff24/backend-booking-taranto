@@ -3,7 +3,7 @@ This file is used to customize the User model in the Django admin panel.
 """
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Structure, Room, Reservation, Discount
+from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 
 
 class CustomUserAdmin(UserAdmin):
@@ -33,3 +33,4 @@ admin.site.register(Structure)
 admin.site.register(Room)
 admin.site.register(Reservation)
 admin.site.register(Discount)
+admin.site.register(GoogleOAuthCredentials)

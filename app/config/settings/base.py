@@ -183,6 +183,7 @@ LOGIN_REDIRECT_URL = 'http://localhost:8000/api/v1/auth/login/'
 # Google OAuth2 Credentials
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = 'http://localhost:8000/api/v1/accounts/google-calendar/redirect/'
 
 # Stripe
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')

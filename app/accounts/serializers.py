@@ -46,24 +46,6 @@ class RoomSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ReservationSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Reservation model
-    """
-
-    class Meta:
-        model = Reservation
-        fields = '__all__'
-
-    def validate(self, data):
-        """
-        Validate that check-in date is before check-out date
-        """
-        if data['check_in'] >= data['check_out']:
-            raise serializers.ValidationError("Check-in date must be before check-out date.")
-        return data
-
-
 class DiscountSerializer(serializers.ModelSerializer):
     """
     Serializer for the Discount model
@@ -82,13 +64,41 @@ class DiscountSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class PaymentIntentSerializer(serializers.Serializer):
+class ReservationSerializer(serializers.ModelSerializer):
     """
-    Serializer for the payment intent information
+    Serializer for the Reservation model
     """
-    amount = serializers.FloatField(
-        min_value=0,
-        help_text="The amount to pay in the selected currency",
-        required=True
-    )
-    currency = serializers.CharField(max_length=3, default='eur')
+    user = UserSerializer(read_only=True)
+    room = RoomSerializer(read_only=True)
+    discount = DiscountSerializer(read_only=True)
+
+    class Meta:
+        model = Reservation
+        fields = ['check_in', 'check_out', 'number_of_people', 'discount',
+                  'first_name_on_reservation', 'last_name_on_reservation',
+                  'email_on_reservation', 'phone_on_reservation', 'coupon_used']
+        read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'paid']
+
+    def validate(self, data):
+        """
+        Validate that check-in date is before check-out date
+        """
+        if data['check_in'] >= data['check_out']:
+            raise serializers.ValidationError("Check-in date must be before check-out date.")
+        if data['number_of_people'] > data['room'].max_people:
+            raise serializers.ValidationError(
+                "Number of people must be less than or equal to the maximum number of people allowed in the room.")
+        return data
+
+
+class ReservationCalendarSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Reservation model for the calendar
+    """
+    room = RoomSerializer(read_only=True)
+
+    class Meta:
+        model = Reservation
+        fields = ['check_in', 'check_out', 'number_of_people', 'total_cost',
+                  'first_name_on_reservation', 'last_name_on_reservation',
+                  'email_on_reservation', 'phone_on_reservation', 'room']

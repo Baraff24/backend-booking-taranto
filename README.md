@@ -88,6 +88,20 @@ To generate the schema.yml file run inside the container
 or outside the container
 `docker exec -it backend-booking-taranto-app-1 python manage.py spectacular --color --file schema.yml`
 
+### Google Calendar
+Here are the steps you can follow to create a Google Calendar API in the Google Cloud Console:
+1. Go to the Google Cloud Console and sign in with your Google account. 
+2. In the dashboard, click on the "Select a Project" button in the top bar. If you haven't created any projects yet, you'll be prompted to create one. 
+3. In the sidebar on the left, click on the "APIs & Services" button and then select "Credentials" from the menu. 
+4. Click on the "Create credentials" button, then select "OAuth client ID". 
+5. Select "Web application" as the application type, and enter a name for your application. 
+6. In the "Authorized JavaScript Origins" and "Authorized Redirect URIs" fields, enter the URLs of your application that will be handling the OAuth flow. In this project, "http://localhost:8000" is set as the "Authorized JavaScript Origins" and "http://localhost:8000/api/v1/accounts/google-calendar/redirect/" is set as the "Authorized Redirect URIs" field. 
+7. Click on the "Create" button. 
+8. Once the OAuth client ID has been created, you'll be able to see the client ID and client secret in the "Credentials" tab. 
+9. In the sidebar on the left, click on the "Library" button, then search for "Google Calendar API" and select it. 
+10. Click on the "Enable" button to enable the Google Calendar API for your project. 
+11. You can now use the client ID and client secret to authenticate with the Google Calendar API in your application.
+
 ### Example .env
 
 ```

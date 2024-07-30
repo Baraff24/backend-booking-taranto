@@ -67,9 +67,9 @@ class Reservation(models.Model):
     check_in = models.DateField()
     check_out = models.DateField()
     number_of_people = models.IntegerField()
-    total_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True)
     payment_intent_id = models.CharField(max_length=100, blank=True)
-    payed = models.BooleanField(default=False)
+    paid = models.BooleanField(default=False)
     first_name_on_reservation = models.CharField(max_length=100)
     last_name_on_reservation = models.CharField(max_length=100)
     phone_on_reservation = models.CharField(max_length=20)
@@ -96,3 +96,20 @@ class Discount(models.Model):
 
     def __str__(self):
         return str(self.code)
+
+
+class GoogleOAuthCredentials(models.Model):
+    """
+    Model that represents the Google OAuth credential.
+    """
+    token = models.TextField()
+    refresh_token = models.TextField()
+    token_uri = models.TextField()
+    client_id = models.TextField()
+    client_secret = models.TextField()
+    scopes = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return str(self.token)
