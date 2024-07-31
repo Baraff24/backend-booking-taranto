@@ -5,7 +5,6 @@ import stripe
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
@@ -17,12 +16,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .constants import PENDING_COMPLETE_DATA, COMPLETE
+from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
-                          RoomSerializer, ReservationSerializer, DiscountSerializer, ReservationCalendarSerializer,
-                          CreateCheckoutSessionSerializer)
+                          RoomSerializer, ReservationSerializer, DiscountSerializer,
+                          CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -140,11 +139,56 @@ class CompleteProfileAPI(APIView):
                         status=status.HTTP_400_BAD_REQUEST)
 
 
+class AddAdminTypeUserAPI(APIView):
+    """
+    API to add an admin type user
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmailSerializer
+
+    @method_decorator(is_active)
+    def post(self, request):
+        """
+        Add an admin type user
+        With a post request and his verified email,
+        an existing user can be made an admin type user
+        """
+        user = request.user
+        if user.is_superuser:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                user = User.objects.get(email=serializer.validated_data['email'])
+                user.type = ADMIN
+                user.save()
+                return Response({'message': f'{user} is now an admin type user'}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'You are not authorized to perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
+
+class CreateStructureAPI(APIView):
+    """
+    API to create a structure
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = StructureSerializer
+
+    @method_decorator(is_active)
+    def post(self, request):
+        """
+        Create a structure
+        """
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class StructureViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing structure instances.
     """
-    serializer_class = StructureSerializer
+    serializer_class = StructureRoomSerializer
     queryset = Structure.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -159,11 +203,6 @@ class StructureViewSet(viewsets.ModelViewSet):
     @method_decorator(is_active)
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
-
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
 
     @method_decorator(is_active)
     @method_decorator(is_admin)
@@ -504,7 +543,7 @@ class AvailableRoomsAPI(APIView):
                         current_date += timedelta(days=1)
 
                 # Determine available dates
-                current_date = datetime.utcnow().date()
+                current_date = datetime.now(timezone.utc).date()
                 one_year_from_now = current_date + timedelta(days=365)
                 while current_date <= one_year_from_now:
                     if current_date.strftime('%Y-%m-%d') not in busy_dates:
@@ -571,8 +610,9 @@ class RentRoomAPI(APIView):
                 events = events_result.get('items', [])
 
                 if events:
-                    return Response({'error': 'Room is not available for the selected dates due to existing Google Calendar events.'},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                    return Response({
+                        'error': 'Room is not available for the selected dates due to existing Google Calendar events.'},
+                        status=status.HTTP_400_BAD_REQUEST)
             except GoogleOAuthCredentials.DoesNotExist:
                 return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -585,6 +625,7 @@ class RentRoomAPI(APIView):
             reservation.save()
 
             # Create the event on Google Calendar
+            # Move this code to function after the payment is successful
             event = {
                 'summary': f"Reservation for {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}",
                 'description': (
@@ -656,6 +697,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = CreateCheckoutSessionSerializer
+
     @method_decorator(is_active)
     def post(self, request):
         """
@@ -696,8 +738,6 @@ class CreateCheckoutSessionLinkAPI(APIView):
                 # Add the payment intent id to the reservation
                 reservation = Reservation.objects.get(id=data['reservation'])
                 reservation.payment_intent_id = session.payment_intent
-                reservation.paid = True
-                reservation.save()
 
                 return Response({'id': session.id}, status=status.HTTP_200_OK)
 

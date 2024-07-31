@@ -26,6 +26,13 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
         fields = ['first_name', 'last_name', 'telephone']
 
 
+class EmailSerializer(serializers.Serializer):
+    """
+    Serializer for the email field
+    """
+    email = serializers.EmailField()
+
+
 class StructureSerializer(serializers.ModelSerializer):
     """
     Serializer for the Structure model
@@ -33,7 +40,7 @@ class StructureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Structure
-        fields = '__all__'
+        fields = ['name', 'description', 'address', 'csi']
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -43,7 +50,18 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = '__all__'
+        fields = ['name', 'room_status', 'services', 'cost_per_night', 'max_people', 'structure']
+
+
+class StructureRoomSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Structure model
+    """
+    rooms = RoomSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Structure
+        fields = ['name', 'description', 'address', 'csi', 'rooms']
 
 
 class DiscountSerializer(serializers.ModelSerializer):
@@ -129,4 +147,3 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
         if value <= 0:
             raise serializers.ValidationError("Number of people must be a positive integer.")
         return value
-
