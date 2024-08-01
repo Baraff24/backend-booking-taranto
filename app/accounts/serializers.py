@@ -40,7 +40,7 @@ class StructureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Structure
-        fields = ['id', 'name', 'description', 'address', 'csi']
+        fields = ['id', 'name', 'description', 'address', 'cis']
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -61,7 +61,7 @@ class StructureRoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Structure
-        fields = ['id', 'name', 'description', 'address', 'csi', 'rooms']
+        fields = ['id', 'name', 'description', 'address', 'cis', 'rooms']
 
 
 class DiscountSerializer(serializers.ModelSerializer):
