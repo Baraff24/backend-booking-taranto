@@ -195,11 +195,9 @@ class StructureViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'address', 'description']
     ordering_fields = ['name', 'address']
 
-    @method_decorator(is_active)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(is_active)
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
