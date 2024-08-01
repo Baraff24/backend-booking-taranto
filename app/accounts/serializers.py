@@ -40,7 +40,7 @@ class StructureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Structure
-        fields = ['name', 'description', 'address', 'csi']
+        fields = ['id', 'name', 'description', 'address', 'csi']
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -50,7 +50,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['name', 'room_status', 'services', 'cost_per_night', 'max_people', 'structure']
+        fields = ['id', 'name', 'room_status', 'services', 'cost_per_night', 'max_people', 'structure']
 
 
 class StructureRoomSerializer(serializers.ModelSerializer):
@@ -61,7 +61,7 @@ class StructureRoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Structure
-        fields = ['name', 'description', 'address', 'csi', 'rooms']
+        fields = ['id', 'name', 'description', 'address', 'csi', 'rooms']
 
 
 class DiscountSerializer(serializers.ModelSerializer):
@@ -92,7 +92,7 @@ class ReservationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Reservation
-        fields = ['check_in', 'check_out', 'number_of_people', 'discount',
+        fields = ['id', 'check_in', 'check_out', 'number_of_people', 'discount',
                   'first_name_on_reservation', 'last_name_on_reservation',
                   'email_on_reservation', 'phone_on_reservation', 'coupon_used', 'user', 'room']
         read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'paid']
@@ -116,7 +116,7 @@ class ReservationCalendarSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Reservation
-        fields = ['check_in', 'check_out', 'number_of_people', 'total_cost',
+        fields = ['id', 'check_in', 'check_out', 'number_of_people', 'total_cost',
                   'first_name_on_reservation', 'last_name_on_reservation',
                   'email_on_reservation', 'phone_on_reservation', 'room']
 
