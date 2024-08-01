@@ -223,17 +223,14 @@ class RoomViewSet(viewsets.ModelViewSet):
     """
     serializer_class = RoomSerializer
     queryset = Room.objects.all()
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['structure', 'cost_per_night', 'max_people']
     search_fields = ['name', 'services']
     ordering_fields = ['name', 'cost_per_night', 'max_people']
 
-    @method_decorator(is_active)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(is_active)
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
@@ -300,17 +297,16 @@ class DiscountViewSet(viewsets.ModelViewSet):
     """
     serializer_class = DiscountSerializer
     queryset = Discount.objects.all()
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['code', 'start_date', 'end_date']
     search_fields = ['code', 'description']
     ordering_fields = ['code', 'discount', 'start_date', 'end_date']
 
-    @method_decorator(is_active)
+
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(is_active)
+
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
