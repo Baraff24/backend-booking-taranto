@@ -190,7 +190,6 @@ class StructureViewSet(viewsets.ModelViewSet):
     """
     serializer_class = StructureRoomSerializer
     queryset = Structure.objects.all()
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['name', 'address']
     search_fields = ['name', 'address', 'description']
