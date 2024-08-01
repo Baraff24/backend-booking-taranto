@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=100)),
                 ('description', models.TextField(blank=True)),
                 ('address', models.CharField(max_length=200)),
-                ('csi', models.CharField(max_length=20, unique=True)),
+                ('cis', models.CharField(max_length=20, unique=True)),
             ],
         ),
         migrations.CreateModel(
