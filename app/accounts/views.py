@@ -39,10 +39,16 @@ class UsersListAPI(APIView):
         Get all users if the user is a superuser
         """
         user = request.user
-        obj = User.objects.all()
+        if not user.is_superuser:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        type_param = request.query_params.get('type', None)
+        if type_param:
+            obj = User.objects.filter(type=type_param)
+        else:
+            obj = User.objects.all()
+
         serializer = self.serializer_class(obj, many=True)
-        if user.is_superuser:
-            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
 
