@@ -49,7 +49,7 @@ class UsersListAPI(APIView):
             obj = User.objects.all()
 
         serializer = self.serializer_class(obj, many=True)
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserDetailAPI(APIView):
