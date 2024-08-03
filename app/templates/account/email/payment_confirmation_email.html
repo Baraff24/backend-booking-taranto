@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Conferma Pagamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333333;
+        }
+        p {
+            color: #666666;
+            line-height: 1.5;
+        }
+        ul {
+            padding: 0;
+            list-style-type: none;
+        }
+        ul li {
+            background-color: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            color: #333333;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #aaaaaa;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 20px 0;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Grazie per il tuo pagamento!</h1>
+        <p>Gentile {{ reservation.user.first_name }},</p>
+        <p>Siamo lieti di confermare il pagamento per la tua prenotazione. Qui di seguito i dettagli:</p>
+        <ul>
+            <li><strong>Camera:</strong> {{ reservation.room.name }}</li>
+            <li><strong>Data di check-in:</strong> {{ reservation.check_in }}</li>
+            <li><strong>Data di check-out:</strong> {{ reservation.check_out }}</li>
+            <li><strong>Importo pagato:</strong> {{ reservation.amount }} €</li>
+        </ul>
+        <p>Grazie per aver scelto il nostro servizio.</p>
+        <p>Cordiali saluti,</p>
+        <p>Il team dell'hotel</p>
+        <div class="footer">
+            <p>Se hai domande, non esitare a contattarci.</p>
+            <p>Hotel XYZ, Via Roma 123, 00100 Roma, Italia</p>
+            <p>Telefono: +39 06 1234 5678</p>
+            <p>Email: info@hotelxyz.it</p>
+        </div>
+    </div>
+</body>
+</html>

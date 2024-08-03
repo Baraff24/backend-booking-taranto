@@ -17,7 +17,7 @@ urlpatterns = [
 
         # Registration endpoints
         path('auth/registration/account-confirm-email/<str:key>/',
-             ConfirmEmailView.as_view()),
+             ConfirmEmailView.as_view(), name='account_confirm_email'),
         path('auth/registration/', include('dj_rest_auth.registration.urls')),
         path('auth/registration/verify-email/', VerifyEmailView.as_view(),
              name='verify_email'),

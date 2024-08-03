@@ -4,7 +4,7 @@ Django==5.0.7
 django-cors-headers==4.4.0
 djangorestframework==3.15.2
 dj-rest-auth==6.0.0
-django-allauth==0.63.6
+django-allauth==64.0.0
 django-filter==24.2
 drf-spectacular==0.27.2
 google-api-core==2.19.1
@@ -13,7 +13,7 @@ google-auth==2.32.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
 googleapis-common-protos==1.63.2
-ruff==0.5.5
+ruff==0.5.6
 gunicorn==22.0.0
 Pillow==10.4.0
 psycopg2==2.9.9
@@ -21,5 +21,5 @@ python-decouple==3.8
 pytz==2024.1
 redis==5.0.7
 sqlparse==0.5.1
-stripe==10.4.0
-uvicorn==0.30.3
+stripe==10.6.0
+uvicorn==0.30.5

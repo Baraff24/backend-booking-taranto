@@ -32,10 +32,6 @@ class UsersListAPI(APIView):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'type']
-    search_fields = ['username', 'email', 'first_name', 'last_name']
-    ordering_fields = ['username', 'email', 'first_name', 'last_name']
 
     @method_decorator(is_active)
     def get(self, request):
@@ -89,7 +85,8 @@ class UserDetailAPI(APIView):
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = self.serializer_class(obj, data=request.data)
-        if obj.id == request.user.id or request.user.is_superuser:
+        # if obj.id == request.user.id or request.user.is_superuser:
+        if request.user.is_superuser:
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -105,7 +102,8 @@ class UserDetailAPI(APIView):
         obj = self.get_object(pk)
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        if obj.id == request.user.id or request.user.is_superuser:
+        # if obj.id == request.user.id or request.user.is_superuser:
+        if request.user.is_superuser:
             obj.is_active = False
             obj.save()
             return Response(status=status.HTTP_200_OK)

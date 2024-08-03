@@ -56,7 +56,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [BASE_DIR / 'app/templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -168,8 +168,19 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+DJANGO_BACKEND_URL = config('DOMAIN', default='http://localhost:8000')
+
+# dj-rest-auth settings
+# FRONTEND_URL = 'http://localhost:5173'
+# ACCOUNT_EMAIL_CONFIRMATION_URL = FRONTEND_URL + '/confirm-email/{key}/'
+# PASSWORD_RESET_CONFIRM_URL = FRONTEND_URL + '/reset-password-confirm/{uid}/{token}/'
+
+# ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = FRONTEND_URL + '/confirm-email/{key}/'
+# ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = FRONTEND_URL + '/confirm-email/{key}/'
+# DJRESTAUTH_RESETPASSWORD_CONFIRM_REDIRECT_URL = FRONTEND_URL + '/reset-password-confirm/'
+
 SOCIALACCOUNT_QUERY_EMAIL = True
-ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
@@ -177,13 +188,13 @@ ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 # redirect to the login page in case of authentication failure
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
-LOGIN_URL = 'http://localhost:8000/api/v1/auth/login/'
-LOGIN_REDIRECT_URL = 'http://localhost:8000/api/v1/auth/login/'
+LOGIN_URL = DJANGO_BACKEND_URL + '/api/v1/auth/login/'
+LOGIN_REDIRECT_URL = DJANGO_BACKEND_URL + '/api/v1/auth/login/'
 
 # Google OAuth2 Credentials
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = 'http://localhost:8000/api/v1/accounts/google-calendar/redirect/'
+GOOGLE_REDIRECT_URI = DJANGO_BACKEND_URL + '/api/v1/accounts/google-calendar/redirect/'
 
 # Stripe
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')

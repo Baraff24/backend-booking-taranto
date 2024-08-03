@@ -76,7 +76,7 @@ def handle_payment_intent_succeeded(payment_intent):
         try:
             # Send an email to the user to confirm the payment
             subject = 'Conferma di pagamento per la tua prenotazione'
-            html_message = render_to_string('payment_confirmation_email.html', {'reservation': reservation})
+            html_message = render_to_string('account/email/payment_confirmation_email.html', {'reservation': reservation})
             plain_message = strip_tags(html_message)
             from_email = EMAIL
             to_email = reservation.user.email
