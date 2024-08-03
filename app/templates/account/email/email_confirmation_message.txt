@@ -1,7 +1,0 @@
-Ciao {{ user.username }},
-
-Per favore conferma il tuo indirizzo email cliccando sul seguente link:
-
-{{ activate_url }}
-
-Grazie!

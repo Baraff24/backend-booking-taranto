@@ -131,6 +131,7 @@ REDIS_BACKEND=redis://redis:6379/0
 CADDY_PORT=80
 CADDY_EMAIL=email@example.com
 DOMAIN=example.com
+FRONTEND_URL=http://localhost:5000
 STRIPE_PUBLISHABLE_KEY=stripekey
 STRIPE_SECRET_KEY=stripesecret
 STRIPE_WEBHOOK_SECRET=whsec_7J9

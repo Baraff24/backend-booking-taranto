@@ -16,6 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from config.settings.base import BASE_DIR
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
