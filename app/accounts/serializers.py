@@ -127,7 +127,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         fields = ['id', 'check_in', 'check_out', 'number_of_people', 'discount',
                   'first_name_on_reservation', 'last_name_on_reservation',
                   'email_on_reservation', 'phone_on_reservation', 'coupon_used', 'user', 'room']
-        read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'paid', 'created_at']
+        read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'status', 'created_at']
 
     def validate(self, data):
         """
@@ -150,7 +150,7 @@ class ReservationCalendarSerializer(serializers.ModelSerializer):
         model = Reservation
         fields = ['id', 'check_in', 'check_out', 'number_of_people', 'total_cost',
                   'first_name_on_reservation', 'last_name_on_reservation',
-                  'email_on_reservation', 'phone_on_reservation', 'room']
+                  'email_on_reservation', 'phone_on_reservation', 'status', 'room']
 
 
 class CreateCheckoutSessionSerializer(serializers.Serializer):

@@ -18,8 +18,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.settings.base import BASE_DIR
-from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN
-from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount
+from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
+from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
+    handle_refund_succeeded
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
@@ -550,6 +551,10 @@ class StripeWebhook(APIView):
             payment_intent = event['data']['object']
             handle_payment_intent_succeeded(payment_intent)
 
+        if event['type'] == 'refund.succeeded':
+            refund = event['data']['object']
+            handle_refund_succeeded(refund)
+
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
 
@@ -819,3 +824,43 @@ class CreateCheckoutSessionLinkAPI(APIView):
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CancelReservationAPI(APIView):
+    """
+    API to cancel a reservation and process a refund using Stripe
+    """
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def post(self, request):
+        """
+        Cancel a reservation and process a refund
+        """
+        reservation_id = request.data.get('reservation_id')
+
+        try:
+            # Retrieve the reservation
+            reservation = Reservation.objects.get(id=reservation_id)
+
+            if not reservation.payment_intent_id:
+                return Response({'error': 'No payment intent found for this reservation.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            # Process the refund using Stripe
+            stripe.Refund.create(
+                payment_intent=reservation.payment_intent_id,
+            )
+
+            # Update the reservation status
+            reservation.status = CANCELED
+            reservation.save()
+
+            return Response({'message': 'Reservation canceled and refund processed successfully.'},
+                            status=status.HTTP_200_OK)
+
+        except Reservation.DoesNotExist:
+            return Response({'error': 'Reservation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except stripe.error.StripeError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

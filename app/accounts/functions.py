@@ -76,7 +76,33 @@ def handle_payment_intent_succeeded(payment_intent):
         try:
             # Send an email to the user to confirm the payment
             subject = 'Conferma di pagamento per la tua prenotazione'
-            html_message = render_to_string('account/email/payment_confirmation_email.html', {'reservation': reservation})
+            html_message = render_to_string('account/stripe/payment_confirmation_email.html', {'reservation': reservation})
+            plain_message = strip_tags(html_message)
+            from_email = EMAIL
+            to_email = reservation.user.email
+
+            send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+            return Response({'status': 'success'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Reservation.DoesNotExist:
+        return Response({"Error": "Reservation not found"},
+                        status=status.HTTP_404_NOT_FOUND)
+
+
+def handle_refund_succeeded(refund):
+    """
+    Function to handle the refund succeeded
+    """
+    # Get the reservation and set the paid field to False
+    try:
+        reservation = Reservation.objects.get(payment_intent=refund)
+
+        try:
+            # Send an email to the user to confirm the refund
+            subject = 'Conferma di rimborso per la tua prenotazione'
+            html_message = render_to_string('account/stripe/refund_confirmation_email.html', {'reservation': reservation})
             plain_message = strip_tags(html_message)
             from_email = EMAIL
             to_email = reservation.user.email

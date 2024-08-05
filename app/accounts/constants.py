@@ -13,6 +13,11 @@ ADMIN = 'ADMIN'
 AVAILABLE = 'AVAILABLE'
 UNAVAILABLE = 'UNAVAILABLE'
 
+# STATUS_RESERVATION VALUES
+UNPAID = 'UNPAID'
+PAID = 'PAID'
+CANCELED = 'CANCELED'
+
 STATUS_CHOICES = (
     (COMPLETE, 'Complete'),
     (PENDING_COMPLETE_DATA, 'Pending Complete Data'),
@@ -27,4 +32,10 @@ TYPE_VALUES = (
 ROOM_STATUS = (
     (AVAILABLE, 'Available'),
     (UNAVAILABLE, 'Unavailable'),
+)
+
+STATUS_RESERVATION = (
+    (UNPAID, 'Unpaid'),
+    (PAID, 'Paid'),
+    (CANCELED, 'Canceled'),
 )

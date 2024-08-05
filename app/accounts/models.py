@@ -7,7 +7,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 from .constants import (STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES,
-                        CUSTOMER, ROOM_STATUS, AVAILABLE)
+                        CUSTOMER, ROOM_STATUS, AVAILABLE, STATUS_RESERVATION, UNPAID)
 
 
 class User(AbstractUser):
@@ -81,7 +81,7 @@ class Reservation(models.Model):
     number_of_people = models.IntegerField()
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     payment_intent_id = models.CharField(max_length=100, blank=True)
-    paid = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_RESERVATION, default=UNPAID)
     first_name_on_reservation = models.CharField(max_length=100)
     last_name_on_reservation = models.CharField(max_length=100)
     phone_on_reservation = models.CharField(max_length=20)
