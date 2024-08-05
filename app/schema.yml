@@ -4,35 +4,6 @@ info:
   version: 1.0.0
   description: GM Apartments Booking Taranto APIs
 paths:
-  /api/v1/accounts/create-payment-intent/:
-    post:
-      operationId: accounts_create_payment_intent_create
-      description: Create a payment intent
-      tags:
-      - accounts
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PaymentIntent'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PaymentIntent'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PaymentIntent'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaymentIntent'
-          description: ''
   /api/v1/accounts/discounts/:
     get:
       operationId: accounts_discounts_list
@@ -70,6 +41,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -100,6 +72,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '201':
           content:
@@ -124,6 +97,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -159,6 +133,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -193,6 +168,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -216,8 +192,35 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '204':
+          description: No response body
+  /api/v1/accounts/google-calendar/init/:
+    get:
+      operationId: accounts_google_calendar_init_retrieve
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/accounts/google-calendar/redirect/:
+    get:
+      operationId: accounts_google_calendar_redirect_retrieve
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
           description: No response body
   /api/v1/accounts/reservations/:
     get:
@@ -409,6 +412,51 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/accounts/room/available-rooms/:
+    get:
+      operationId: accounts_room_available_rooms_retrieve
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+          description: ''
+  /api/v1/accounts/room/rent-room/:
+    post:
+      operationId: accounts_room_rent_room_create
+      description: Rent a room
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reservation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Reservation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Reservation'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
   /api/v1/accounts/rooms/:
     get:
       operationId: accounts_rooms_list
@@ -444,6 +492,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -474,6 +523,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '201':
           content:
@@ -498,6 +548,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -533,6 +584,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -567,6 +619,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -590,6 +643,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '204':
           description: No response body
@@ -607,6 +661,64 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/accounts/stripe/create-checkout-session/:
+    post:
+      operationId: accounts_stripe_create_checkout_session_create
+      description: Create a checkout session link
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCheckoutSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateCheckoutSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateCheckoutSession'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateCheckoutSession'
+          description: ''
+  /api/v1/accounts/structure/create-structure/:
+    post:
+      operationId: accounts_structure_create_structure_create
+      description: Create a structure
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Structure'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Structure'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Structure'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Structure'
+          description: ''
   /api/v1/accounts/structures/:
     get:
       operationId: accounts_structures_list
@@ -638,6 +750,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -645,7 +758,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Structure'
+                  $ref: '#/components/schemas/StructureRoom'
           description: ''
     post:
       operationId: accounts_structures_create
@@ -656,24 +769,25 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Structure'
+              $ref: '#/components/schemas/StructureRoom'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Structure'
+              $ref: '#/components/schemas/StructureRoom'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Structure'
+              $ref: '#/components/schemas/StructureRoom'
         required: true
       security:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Structure'
+                $ref: '#/components/schemas/StructureRoom'
           description: ''
   /api/v1/accounts/structures/{id}/:
     get:
@@ -692,12 +806,13 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Structure'
+                $ref: '#/components/schemas/StructureRoom'
           description: ''
     put:
       operationId: accounts_structures_update
@@ -715,24 +830,25 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Structure'
+              $ref: '#/components/schemas/StructureRoom'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Structure'
+              $ref: '#/components/schemas/StructureRoom'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Structure'
+              $ref: '#/components/schemas/StructureRoom'
         required: true
       security:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Structure'
+                $ref: '#/components/schemas/StructureRoom'
           description: ''
     patch:
       operationId: accounts_structures_partial_update
@@ -750,23 +866,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedStructure'
+              $ref: '#/components/schemas/PatchedStructureRoom'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedStructure'
+              $ref: '#/components/schemas/PatchedStructureRoom'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedStructure'
+              $ref: '#/components/schemas/PatchedStructureRoom'
       security:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Structure'
+                $ref: '#/components/schemas/StructureRoom'
           description: ''
     delete:
       operationId: accounts_structures_destroy
@@ -777,6 +894,61 @@ paths:
         schema:
           type: integer
         description: A unique integer value identifying this structure.
+        required: true
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/accounts/structures/{id}/images/:
+    post:
+      operationId: accounts_structures_images_create
+      description: Add an image to a structure
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StructureImage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StructureImage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StructureImage'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StructureImage'
+          description: ''
+  /api/v1/accounts/structures/images/{id}/:
+    delete:
+      operationId: accounts_structures_images_destroy
+      description: Delete an image from a structure
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
         required: true
       tags:
       - accounts
@@ -881,6 +1053,38 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/accounts/users/add-admin/:
+    post:
+      operationId: accounts_users_add_admin_create
+      description: |-
+        Add an admin type user
+        With a post request and his verified email,
+        an existing user can be made an admin type user
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Email'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Email'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Email'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Email'
+          description: ''
   /api/v1/accounts/users/complete-profile/:
     put:
       operationId: accounts_users_complete_profile_update
@@ -947,27 +1151,6 @@ paths:
                 $ref: '#/components/schemas/Token'
           description: ''
   /api/v1/auth/logout/:
-    get:
-      operationId: auth_logout_retrieve
-      description: |-
-        Calls Django logout method and delete the Token object
-        assigned to the current User object.
-
-        Accepts/Returns nothing.
-      tags:
-      - auth
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
     post:
       operationId: auth_logout_create
       description: |-
@@ -1070,109 +1253,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/RestAuthDetail'
           description: ''
-  /api/v1/auth/password/change/:
-    post:
-      operationId: auth_password_change_create
-      description: |-
-        Calls Django Auth SetPasswordForm save method.
-
-        Accepts the following POST parameters: new_password1, new_password2
-        Returns the success/fail message.
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordChange'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PasswordChange'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PasswordChange'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
-  /api/v1/auth/password/reset/:
-    post:
-      operationId: auth_password_reset_create_2
-      description: |-
-        Calls Django Auth PasswordResetForm save method.
-
-        Accepts the following POST parameters: email
-        Returns the success/fail message.
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordReset'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PasswordReset'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PasswordReset'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
-  /api/v1/auth/password/reset/confirm/:
-    post:
-      operationId: auth_password_reset_confirm_create_2
-      description: |-
-        Password reset e-mail link is confirmed, therefore
-        this resets the user's password.
-
-        Accepts the following POST parameters: token, uid,
-            new_password1, new_password2
-        Returns the success/fail message.
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordResetConfirm'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PasswordResetConfirm'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PasswordResetConfirm'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
   /api/v1/auth/registration/:
     post:
       operationId: auth_registration_create
@@ -1189,100 +1269,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/Register'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
-  /api/v1/auth/registration/account-confirm-email/:
-    post:
-      operationId: auth_registration_account_confirm_email_create
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerifyEmail'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/VerifyEmail'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/VerifyEmail'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
-  /api/v1/auth/registration/account-confirm-email/{key}/:
-    post:
-      operationId: auth_registration_account_confirm_email_create_2
-      parameters:
-      - in: path
-        name: key
-        schema:
-          type: string
-          pattern: ^[-:\w]+$
-        required: true
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerifyEmail'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/VerifyEmail'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/VerifyEmail'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RestAuthDetail'
-          description: ''
-  /api/v1/auth/registration/resend-email/:
-    post:
-      operationId: auth_registration_resend_email_create
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ResendEmailVerification'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ResendEmailVerification'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ResendEmailVerification'
         required: true
       security:
       - basicAuth: []
@@ -1354,102 +1340,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/RestAuthDetail'
           description: ''
-  /api/v1/auth/user/:
-    get:
-      operationId: auth_user_retrieve
-      description: |-
-        Reads and updates UserModel fields
-        Accepts GET, PUT, PATCH methods.
-
-        Default accepted fields: username, first_name, last_name
-        Default display fields: pk, username, email, first_name, last_name
-        Read-only fields: pk, email
-
-        Returns UserModel fields.
-      tags:
-      - auth
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDetails'
-          description: ''
-    put:
-      operationId: auth_user_update
-      description: |-
-        Reads and updates UserModel fields
-        Accepts GET, PUT, PATCH methods.
-
-        Default accepted fields: username, first_name, last_name
-        Default display fields: pk, username, email, first_name, last_name
-        Read-only fields: pk, email
-
-        Returns UserModel fields.
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserDetails'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UserDetails'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UserDetails'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDetails'
-          description: ''
-    patch:
-      operationId: auth_user_partial_update
-      description: |-
-        Reads and updates UserModel fields
-        Accepts GET, PUT, PATCH methods.
-
-        Default accepted fields: username, first_name, last_name
-        Default display fields: pk, username, email, first_name, last_name
-        Read-only fields: pk, email
-
-        Returns UserModel fields.
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedUserDetails'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedUserDetails'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedUserDetails'
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserDetails'
-          description: ''
 components:
   schemas:
     CompleteProfile:
@@ -1466,6 +1356,19 @@ components:
           type: string
           nullable: true
           maxLength: 20
+    CreateCheckoutSession:
+      type: object
+      properties:
+        room:
+          type: integer
+        reservation:
+          type: integer
+        number_of_people:
+          type: integer
+      required:
+      - number_of_people
+      - reservation
+      - room
     Discount:
       type: object
       description: Serializer for the Discount model
@@ -1509,6 +1412,15 @@ components:
       - numbers_of_nights
       - rooms
       - start_date
+    Email:
+      type: object
+      description: Serializer for the email field
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
     Login:
       type: object
       properties:
@@ -1521,18 +1433,6 @@ components:
           type: string
       required:
       - password
-    PasswordChange:
-      type: object
-      properties:
-        new_password1:
-          type: string
-          maxLength: 128
-        new_password2:
-          type: string
-          maxLength: 128
-      required:
-      - new_password1
-      - new_password2
     PasswordReset:
       type: object
       description: Serializer for requesting a password reset e-mail.
@@ -1602,10 +1502,6 @@ components:
         id:
           type: integer
           readOnly: true
-        reservation_id:
-          type: string
-          format: uuid
-          readOnly: true
         check_in:
           type: string
           format: date
@@ -1616,39 +1512,34 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        total_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        payment_intent_id:
-          type: string
-          maxLength: 100
-        payed:
-          type: boolean
+        discount:
+          allOf:
+          - $ref: '#/components/schemas/Discount'
+          readOnly: true
         first_name_on_reservation:
           type: string
           maxLength: 100
         last_name_on_reservation:
           type: string
           maxLength: 100
-        phone_on_reservation:
-          type: string
-          maxLength: 20
         email_on_reservation:
           type: string
           format: email
           maxLength: 254
+        phone_on_reservation:
+          type: string
+          maxLength: 20
         coupon_used:
           type: string
           maxLength: 20
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
         user:
-          type: integer
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
         room:
-          type: integer
+          allOf:
+          - $ref: '#/components/schemas/Room'
+          readOnly: true
     PatchedRoom:
       type: object
       description: Serializer for the Room model
@@ -1656,11 +1547,11 @@ components:
         id:
           type: integer
           readOnly: true
-        room_status:
-          $ref: '#/components/schemas/RoomStatusEnum'
         name:
           type: string
           maxLength: 100
+        room_status:
+          $ref: '#/components/schemas/RoomStatusEnum'
         services:
           type: string
         cost_per_night:
@@ -1673,7 +1564,7 @@ components:
           minimum: -2147483648
         structure:
           type: integer
-    PatchedStructure:
+    PatchedStructureRoom:
       type: object
       description: Serializer for the Structure model
       properties:
@@ -1688,49 +1579,19 @@ components:
         address:
           type: string
           maxLength: 200
-        csi:
+        cis:
           type: string
           maxLength: 20
-    PatchedUserDetails:
-      type: object
-      description: User model w/o password
-      properties:
-        pk:
-          type: integer
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
           readOnly: true
-          title: ID
-        username:
-          type: string
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
+        structure_images:
+          type: array
+          items:
+            $ref: '#/components/schemas/StructureImage'
           readOnly: true
-          title: Email address
-        first_name:
-          type: string
-          maxLength: 30
-        last_name:
-          type: string
-          maxLength: 150
-    PaymentIntent:
-      type: object
-      description: Serializer for the payment intent information
-      properties:
-        amount:
-          type: number
-          format: double
-          minimum: 0
-          description: The amount to pay in the selected currency
-        currency:
-          type: string
-          default: eur
-          maxLength: 3
-      required:
-      - amount
     Register:
       type: object
       properties:
@@ -1767,10 +1628,6 @@ components:
         id:
           type: integer
           readOnly: true
-        reservation_id:
-          type: string
-          format: uuid
-          readOnly: true
         check_in:
           type: string
           format: date
@@ -1781,52 +1638,45 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        total_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        payment_intent_id:
-          type: string
-          maxLength: 100
-        payed:
-          type: boolean
+        discount:
+          allOf:
+          - $ref: '#/components/schemas/Discount'
+          readOnly: true
         first_name_on_reservation:
           type: string
           maxLength: 100
         last_name_on_reservation:
           type: string
           maxLength: 100
-        phone_on_reservation:
-          type: string
-          maxLength: 20
         email_on_reservation:
           type: string
           format: email
           maxLength: 254
+        phone_on_reservation:
+          type: string
+          maxLength: 20
         coupon_used:
           type: string
           maxLength: 20
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
         user:
-          type: integer
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
         room:
-          type: integer
+          allOf:
+          - $ref: '#/components/schemas/Room'
+          readOnly: true
       required:
       - check_in
       - check_out
-      - created_at
+      - discount
       - email_on_reservation
       - first_name_on_reservation
       - id
       - last_name_on_reservation
       - number_of_people
       - phone_on_reservation
-      - reservation_id
       - room
-      - total_cost
       - user
     RestAuthDetail:
       type: object
@@ -1843,11 +1693,11 @@ components:
         id:
           type: integer
           readOnly: true
-        room_status:
-          $ref: '#/components/schemas/RoomStatusEnum'
         name:
           type: string
           maxLength: 100
+        room_status:
+          $ref: '#/components/schemas/RoomStatusEnum'
         services:
           type: string
         cost_per_night:
@@ -1897,14 +1747,72 @@ components:
         address:
           type: string
           maxLength: 200
-        csi:
+        cis:
           type: string
           maxLength: 20
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/StructureImage'
       required:
       - address
-      - csi
+      - cis
       - id
       - name
+    StructureImage:
+      type: object
+      description: Serializer for the StructureImage model
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        description:
+          type: string
+          maxLength: 100
+        structure:
+          type: integer
+      required:
+      - id
+      - image
+      - structure
+    StructureRoom:
+      type: object
+      description: Serializer for the Structure model
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        address:
+          type: string
+          maxLength: 200
+        cis:
+          type: string
+          maxLength: 20
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+          readOnly: true
+        structure_images:
+          type: array
+          items:
+            $ref: '#/components/schemas/StructureImage'
+          readOnly: true
+      required:
+      - address
+      - cis
+      - id
+      - name
+      - rooms
+      - structure_images
     Token:
       type: object
       description: Serializer for Token model.
@@ -1992,35 +1900,6 @@ components:
       required:
       - id
       - password
-      - username
-    UserDetails:
-      type: object
-      description: User model w/o password
-      properties:
-        pk:
-          type: integer
-          readOnly: true
-          title: ID
-        username:
-          type: string
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          readOnly: true
-          title: Email address
-        first_name:
-          type: string
-          maxLength: 30
-        last_name:
-          type: string
-          maxLength: 150
-      required:
-      - email
-      - pk
       - username
     VerifyEmail:
       type: object

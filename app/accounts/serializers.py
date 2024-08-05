@@ -3,7 +3,7 @@ Serializers for the accounts app.
 """
 
 from rest_framework import serializers
-from .models import User, Structure, Room, Reservation, Discount
+from .models import User, Structure, Room, Reservation, Discount, StructureImage
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -33,14 +33,45 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+class StructureImageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the StructureImage model
+    """
+
+    class Meta:
+        model = StructureImage
+        fields = ['id', 'image', 'description', 'structure']
+
+
 class StructureSerializer(serializers.ModelSerializer):
     """
     Serializer for the Structure model
     """
+    images = StructureImageSerializer(many=True, required=False)
 
     class Meta:
         model = Structure
-        fields = ['id', 'name', 'description', 'address', 'cis']
+        fields = ['id', 'name', 'description', 'address', 'cis', 'images']
+
+    def create(self, validated_data):
+        images_data = validated_data.pop('images', [])
+        structure = Structure.objects.create(**validated_data)
+        for image_data in images_data:
+            StructureImage.objects.create(structure=structure, **image_data)
+        return structure
+
+    def update(self, instance, validated_data):
+        images_data = validated_data.pop('images', [])
+        instance.name = validated_data.get('name', instance.name)
+        instance.description = validated_data.get('description', instance.description)
+        instance.address = validated_data.get('address', instance.address)
+        instance.cis = validated_data.get('cis', instance.cis)
+        instance.save()
+
+        for image_data in images_data:
+            StructureImage.objects.update_or_create(structure=instance, **image_data)
+
+        return instance
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -58,10 +89,11 @@ class StructureRoomSerializer(serializers.ModelSerializer):
     Serializer for the Structure model
     """
     rooms = RoomSerializer(many=True, read_only=True)
+    structure_images = StructureImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Structure
-        fields = ['id', 'name', 'description', 'address', 'cis', 'rooms']
+        fields = ['id', 'name', 'description', 'address', 'cis', 'rooms', 'structure_images']
 
 
 class DiscountSerializer(serializers.ModelSerializer):

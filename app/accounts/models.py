@@ -42,6 +42,18 @@ class Structure(models.Model):
         return str(self.name)
 
 
+class StructureImage(models.Model):
+    """
+    Model that represents the image of the structure.
+    """
+    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='structure_images/')
+    description = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return str(self.structure)
+
+
 class Room(models.Model):
     """
     Model that represents the room.

@@ -22,7 +22,8 @@ from .functions import is_active, handle_payment_intent_succeeded, is_admin, cal
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
-                          CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer)
+                          CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
+                          StructureImageSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -189,6 +190,66 @@ class CreateStructureAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class AddStructureImageAPI(APIView):
+    """
+    API to add an image to a structure
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = StructureImageSerializer
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the user object by primary
+        """
+        try:
+            return User.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    def post(self, request, pk):
+        """
+        Add an image to a structure
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteStructureImageAPI(APIView):
+    """
+    API to delete an image from a structure
+    """
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the user object by primary
+        """
+        try:
+            return User.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    def delete(self, request, pk):
+        """
+        Delete an image from a structure
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        obj.delete(structure=obj)
+        return Response(status=status.HTTP_200_OK)
+
+
 class StructureViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing structure instances.
@@ -307,10 +368,8 @@ class DiscountViewSet(viewsets.ModelViewSet):
     search_fields = ['code', 'description']
     ordering_fields = ['code', 'discount', 'start_date', 'end_date']
 
-
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-
 
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
@@ -337,6 +396,8 @@ class DiscountViewSet(viewsets.ModelViewSet):
 
 
 class GoogleCalendarInitAPI(APIView):
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
     @staticmethod
     def get(request):
         flow = Flow.from_client_config(
@@ -485,6 +546,7 @@ class StripeWebhook(APIView):
 
 class AvailableRoomsAPI(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = RoomSerializer
 
     def get(self, request):
         room_ids = request.query_params.getlist('rooms')
@@ -550,7 +612,13 @@ class AvailableRoomsAPI(APIView):
 
                 available_dates[room.name] = room_availability
 
-            return Response(available_dates, status=status.HTTP_200_OK)
+                rooms_data = self.serializer_class(rooms, many=True).data
+                response_data = {
+                    'rooms': rooms_data,
+                    'available_dates': available_dates
+                }
+
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except GoogleOAuthCredentials.DoesNotExist:
             return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
