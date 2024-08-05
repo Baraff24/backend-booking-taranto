@@ -5,6 +5,7 @@ import stripe
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Case, When, Value, IntegerField
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
@@ -41,7 +42,7 @@ class UsersListAPI(APIView):
         Get all users if the user is a superuser
         """
         user = request.user
-        if not user.is_superuser:
+        if not user.is_superuser or not user.type == ADMIN:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
         type_param = request.query_params.get('type', None)
@@ -49,6 +50,14 @@ class UsersListAPI(APIView):
             obj = User.objects.filter(type=type_param)
         else:
             obj = User.objects.all()
+
+        obj = obj.annotate(
+            is_logged_in_user=Case(
+                When(id=user.id, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-is_logged_in_user')
 
         serializer = self.serializer_class(obj, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
