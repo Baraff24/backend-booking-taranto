@@ -16,8 +16,6 @@ from rest_framework import status, filters, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from config.settings.base import BASE_DIR
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded
@@ -43,22 +41,23 @@ class UsersListAPI(APIView):
         Get all users if the user is a superuser
         """
         user = request.user
-        if not user.is_superuser or not user.type == ADMIN:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+        if user.is_superuser or user.type == ADMIN:
+            type_param = request.query_params.get('type', None)
+            if type_param:
+                obj = User.objects.filter(type=type_param)
+            else:
+                obj = User.objects.all()
 
-        type_param = request.query_params.get('type', None)
-        if type_param:
-            obj = User.objects.filter(type=type_param)
+            obj = obj.annotate(
+                is_logged_in_user=Case(
+                    When(id=user.id, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            ).order_by('-is_logged_in_user')
+
         else:
-            obj = User.objects.all()
-
-        obj = obj.annotate(
-            is_logged_in_user=Case(
-                When(id=user.id, then=Value(1)),
-                default=Value(0),
-                output_field=IntegerField()
-            )
-        ).order_by('-is_logged_in_user')
+            obj = User.objects.filter(id=user.id)
 
         serializer = self.serializer_class(obj, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
