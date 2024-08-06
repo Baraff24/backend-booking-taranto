@@ -558,7 +558,6 @@ class StripeWebhook(APIView):
 
 
 class AvailableRoomsAPI(APIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = AvailableRoomsSerializer
 
     def get(self, request):
