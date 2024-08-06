@@ -166,7 +166,7 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DJANGO_BACKEND_URL = config('DOMAIN', default='http://localhost:8000')
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 
 # dj-rest-auth settings
 HEADLESS_ONLY = True
@@ -185,7 +185,7 @@ ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 
-LOGIN_URL = FRONTEND_URL + '/email-confirmed/'
+LOGIN_URL = FRONTEND_URL + '/email-verified'
 
 # Google OAuth2 Credentials
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
