@@ -4,6 +4,19 @@ info:
   version: 1.0.0
   description: GM Apartments Booking Taranto APIs
 paths:
+  /api/v1/accounts/cancel-reservation/:
+    post:
+      operationId: accounts_cancel_reservation_create
+      description: Cancel a reservation and process a refund
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/accounts/discounts/:
     get:
       operationId: accounts_discounts_list
@@ -426,7 +439,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Room'
+                $ref: '#/components/schemas/AvailableRooms'
           description: ''
   /api/v1/accounts/room/rent-room/:
     post:
@@ -1342,6 +1355,22 @@ paths:
           description: ''
 components:
   schemas:
+    AvailableRooms:
+      type: object
+      description: Serializer for the Room model
+      properties:
+        structure_room:
+          allOf:
+          - $ref: '#/components/schemas/StructureRoom'
+          readOnly: true
+        available_dates:
+          type: array
+          items:
+            type: string
+            format: date
+      required:
+      - available_dates
+      - structure_room
     CompleteProfile:
       type: object
       description: Serializer for the User model to complete profile
