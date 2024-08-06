@@ -35,7 +35,10 @@ def is_active(view_func):
                 obj = User.objects.filter(email=user.email)
                 if obj[0].status == COMPLETE:
                     return view_func(request, *args, **kwargs)
-                return Response({"Error": "You have to complete the data completion process"},
+                return Response({
+                    "Error": "You have to complete the data completion process",
+                    "Status": obj[0].status
+                },
                                 status=status.HTTP_403_FORBIDDEN)
             return Response({"Error": "Your email is not verified"},
                             status=status.HTTP_403_FORBIDDEN)
