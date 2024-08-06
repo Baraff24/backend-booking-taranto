@@ -25,7 +25,7 @@ from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCre
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer)
+                          StructureImageSerializer, AvailableRoomsSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -560,16 +560,28 @@ class StripeWebhook(APIView):
 
 class AvailableRoomsAPI(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = RoomSerializer
+    serializer_class = AvailableRoomsSerializer
 
     def get(self, request):
         room_ids = request.query_params.getlist('rooms')
+        check_in_date = request.query_params.get('check_in')
+        check_out_date = request.query_params.get('check_out')
+
+        if not check_in_date or not check_out_date:
+            return Response({'error': 'Both check_in and check_out dates are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            rooms = Room.objects.filter(id__in=room_ids)
-        except Room.DoesNotExist:
+            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        rooms = Room.objects.filter(id__in=room_ids)
+        if not rooms:
             return Response({'error': 'One or more rooms do not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
-        available_dates = {}
+        available_rooms = []
         try:
             creds = GoogleOAuthCredentials.objects.get(id=1)
             credentials = Credentials(
@@ -583,54 +595,58 @@ class AvailableRoomsAPI(APIView):
             service = build('calendar', 'v3', credentials=credentials)
 
             for room in rooms:
-                room_availability = []
-                today = datetime.now(timezone.utc).isoformat()
-                next_year = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+                busy_dates = set()
 
                 # Get local reservations
-                local_reservations = Reservation.objects.filter(room=room, check_out__gte=today)
+                local_reservations = Reservation.objects.filter(
+                    room=room,
+                    check_out__gte=check_in,
+                    check_in__lte=check_out
+                )
 
                 # Get Google Calendar events
                 events_result = service.events().list(
                     calendarId='primary',
-                    timeMin=today,
-                    timeMax=next_year,
+                    timeMin=check_in.isoformat(),
+                    timeMax=check_out.isoformat(),
                     singleEvents=True,
                     orderBy='startTime'
                 ).execute()
                 events = events_result.get('items', [])
 
-                # Combine local reservations and Google Calendar events
-                busy_dates = []
+                # Collect busy dates from local reservations
                 for reservation in local_reservations:
                     current_date = reservation.check_in
                     while current_date <= reservation.check_out:
-                        busy_dates.append(current_date.strftime('%Y-%m-%d'))
+                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
                         current_date += timedelta(days=1)
 
+                # Collect busy dates from Google Calendar events
                 for event in events:
                     start_date = datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date'))[:-1])
                     end_date = datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date'))[:-1])
                     current_date = start_date
                     while current_date < end_date:
-                        busy_dates.append(current_date.strftime('%Y-%m-%d'))
+                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
                         current_date += timedelta(days=1)
 
                 # Determine available dates
-                current_date = datetime.now(timezone.utc).date()
-                one_year_from_now = current_date + timedelta(days=365)
-                while current_date <= one_year_from_now:
+                current_date = check_in.date()
+                available_dates = []
+                while current_date <= check_out.date():
                     if current_date.strftime('%Y-%m-%d') not in busy_dates:
-                        room_availability.append(current_date.strftime('%Y-%m-%d'))
+                        available_dates.append(current_date.strftime('%Y-%m-%d'))
                     current_date += timedelta(days=1)
 
-                available_dates[room.name] = room_availability
+                if available_dates:
+                    available_rooms.append({
+                        'structure_room': StructureRoomSerializer(room.structure).data,
+                        'available_dates': available_dates
+                    })
 
-                rooms_data = self.serializer_class(rooms, many=True).data
-                response_data = {
-                    'rooms': rooms_data,
-                    'available_dates': available_dates
-                }
+            response_data = {
+                'rooms': available_rooms
+            }
 
             return Response(response_data, status=status.HTTP_200_OK)
 
