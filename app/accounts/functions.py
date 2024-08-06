@@ -37,7 +37,7 @@ def is_active(view_func):
                     return view_func(request, *args, **kwargs)
                 return Response({
                     "Error": "You have to complete the data completion process",
-                    "Status": obj[0].status
+                    "userStatus": obj[0].status
                 },
                                 status=status.HTTP_403_FORBIDDEN)
             return Response({"Error": "Your email is not verified"},
