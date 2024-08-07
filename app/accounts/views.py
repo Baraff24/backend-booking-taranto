@@ -666,9 +666,7 @@ class AvailableRoomsForDatesAPI(APIView):
                     current_date += timedelta(days=1)
 
                 if is_available:
-                    available_rooms.append({
-                        self.serializer_class(room).data
-                    })
+                    available_rooms.append(self.serializer_class(room).data)
 
             return Response(available_rooms, status=status.HTTP_200_OK)
 
