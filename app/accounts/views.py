@@ -438,7 +438,7 @@ class GoogleCalendarInitAPI(APIView):
     permission_classes = [IsAdminUser]
 
     @staticmethod
-    def get():
+    def get(request):
         flow = Flow.from_client_config(
             {
                 "web": {
