@@ -594,14 +594,20 @@ class AvailableRoomsForDatesAPI(APIView):
     def get(self, request):
         check_in_date = request.query_params.get('check_in')
         check_out_date = request.query_params.get('check_out')
+        max_people = request.query_params.get('max_people')
 
         if not check_in_date or not check_out_date:
             return Response({'error': 'Both check_in and check_out dates are required.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        if not max_people:
+            return Response({'error': 'The max_people parameter is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         try:
             check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            max_people = int(max_people)
         except ValueError:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -618,7 +624,7 @@ class AvailableRoomsForDatesAPI(APIView):
             service = build('calendar', 'v3', credentials=credentials)
 
             available_rooms = []
-            all_rooms = Room.objects.all()
+            all_rooms = Room.objects.filter(max_people__gte=max_people)
 
             for room in all_rooms:
                 busy_dates = set()
