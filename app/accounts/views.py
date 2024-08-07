@@ -13,7 +13,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from rest_framework import status, filters, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
@@ -435,10 +435,10 @@ class DiscountViewSet(viewsets.ModelViewSet):
 
 
 class GoogleCalendarInitAPI(APIView):
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
+    permission_classes = [IsAdminUser]
+
     @staticmethod
-    def get(request):
+    def get():
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -590,7 +590,8 @@ class StripeWebhook(APIView):
 class AvailableRoomsForDatesAPI(APIView):
     serializer_class = AvailableRoomsForDatesSerializer
 
-    def get(self, request):
+    @staticmethod
+    def get(request):
         check_in_date = request.query_params.get('check_in')
         check_out_date = request.query_params.get('check_out')
 
