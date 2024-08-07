@@ -591,8 +591,7 @@ class StripeWebhook(APIView):
 class AvailableRoomsForDatesAPI(APIView):
     serializer_class = AvailableRoomsForDatesSerializer
 
-    @staticmethod
-    def get(request):
+    def get(self, request):
         check_in_date = request.query_params.get('check_in')
         check_out_date = request.query_params.get('check_out')
 
@@ -668,15 +667,10 @@ class AvailableRoomsForDatesAPI(APIView):
 
                 if is_available:
                     available_rooms.append({
-                        'structure': StructureRoomSerializer(room.structure).data,
-                        'room': RoomSerializer(room).data
+                        'room': self.serializer_class(room).data
                     })
 
-            response_data = {
-                'rooms': available_rooms
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response(available_rooms, status=status.HTTP_200_OK)
 
         except GoogleOAuthCredentials.DoesNotExist:
             return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -766,7 +760,7 @@ class AvailableRoomAPI(APIView):
 
                 if available_dates or unavailable_dates:
                     available_rooms.append({
-                        'structure_room': StructureRoomSerializer(room.structure).data,
+                        'structure_room': StructureSerializer(room.structure).data,
                         'available_dates': available_dates,
                         'unavailable_dates': unavailable_dates
                     })
