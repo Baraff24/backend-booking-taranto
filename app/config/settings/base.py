@@ -190,7 +190,7 @@ LOGIN_URL = FRONTEND_URL + '/email-verified'
 # Google OAuth2 Credentials
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = DJANGO_BACKEND_URL + '/api/v1/accounts/google-calendar/redirect/'
+GOOGLE_REDIRECT_URI = 'https://' + DJANGO_BACKEND_URL + '/api/v1/accounts/google-calendar/redirect/'
 
 # Stripe
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
