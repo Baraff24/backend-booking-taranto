@@ -3,6 +3,7 @@ This module contains the views of the accounts app.
 """
 import stripe
 from datetime import datetime, timedelta, timezone
+from dateutil.parser import parse as parse_datetime
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, When, Value, IntegerField
@@ -649,8 +650,8 @@ class AvailableRoomsForDatesAPI(APIView):
 
                 # Collect busy dates from Google Calendar events
                 for event in events:
-                    start_date = datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date'))[:-1])
-                    end_date = datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date'))[:-1])
+                    start_date = parse_datetime(event['start'].get('dateTime', event['start'].get('date'))[:-1])
+                    end_date = parse_datetime(event['end'].get('dateTime', event['end'].get('date'))[:-1])
                     current_date = start_date
                     while current_date < end_date:
                         busy_dates.add(current_date.strftime('%Y-%m-%d'))
@@ -745,8 +746,8 @@ class AvailableRoomAPI(APIView):
 
                 # Collect busy dates from Google Calendar events
                 for event in events:
-                    start_date = datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date'))[:-1])
-                    end_date = datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date'))[:-1])
+                    start_date = parse_datetime(event['start'].get('dateTime', event['start'].get('date'))[:-1])
+                    end_date = parse_datetime(event['end'].get('dateTime', event['end'].get('date'))[:-1])
                     current_date = start_date
                     while current_date < end_date:
                         busy_dates.add(current_date.strftime('%Y-%m-%d'))
