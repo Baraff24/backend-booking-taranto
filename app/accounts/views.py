@@ -248,7 +248,7 @@ class DeleteStructureImageAPI(APIView):
             return None
 
     @method_decorator(is_active)
-    def delete(self, request, pk):
+    def delete(self, pk):
         """
         Delete an image from a structure
         """
@@ -257,6 +257,36 @@ class DeleteStructureImageAPI(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         obj.delete(structure=obj)
         return Response(status=status.HTTP_200_OK)
+
+
+class GetStructureImagesAPI(APIView):
+    """
+    API to get all images of a structure
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = StructureImageSerializer
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the user object by primary
+        """
+        try:
+            return User.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    def get(self, pk):
+        """
+        Get all images of a structure
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        images = obj.images.all()
+        serializer = self.serializer_class(images, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class StructureViewSet(viewsets.ModelViewSet):
