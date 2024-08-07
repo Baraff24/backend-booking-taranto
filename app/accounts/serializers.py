@@ -96,9 +96,17 @@ class StructureRoomSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'address', 'cis', 'rooms', 'structure_images']
 
 
-class AvailableRoomsSerializer(serializers.Serializer):
+class AvailableRoomsForDatesSerializer(serializers.Serializer):
     """
-    Serializer for the Room model
+    Serializer for the AvailableRoomForDates API
+    """
+    structure = StructureRoomSerializer(read_only=True)
+    room = RoomSerializer(read_only=True)
+
+
+class AvailableRoomSerializer(serializers.Serializer):
+    """
+    Serializer for the AvailableRoom API
     """
     structure_room = StructureRoomSerializer(read_only=True)
     available_dates = serializers.ListField(child=serializers.DateField())

@@ -425,21 +425,39 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/v1/accounts/room/available-rooms/:
+  /api/v1/accounts/room/available-room/:
     get:
-      operationId: accounts_room_available_rooms_retrieve
+      operationId: accounts_room_available_room_retrieve
       tags:
       - accounts
       security:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AvailableRooms'
+                $ref: '#/components/schemas/AvailableRoom'
+          description: ''
+  /api/v1/accounts/room/available-rooms-for-dates/:
+    get:
+      operationId: accounts_room_available_rooms_for_dates_retrieve
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableRoomsForDates'
           description: ''
   /api/v1/accounts/room/rent-room/:
     post:
@@ -919,6 +937,28 @@ paths:
         '204':
           description: No response body
   /api/v1/accounts/structures/{id}/images/:
+    get:
+      operationId: accounts_structures_images_retrieve
+      description: Get all images of a structure
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StructureImage'
+          description: ''
     post:
       operationId: accounts_structures_images_create
       description: Add an image to a structure
@@ -1355,9 +1395,9 @@ paths:
           description: ''
 components:
   schemas:
-    AvailableRooms:
+    AvailableRoom:
       type: object
-      description: Serializer for the Room model
+      description: Serializer for the AvailableRoom API
       properties:
         structure_room:
           allOf:
@@ -1371,6 +1411,21 @@ components:
       required:
       - available_dates
       - structure_room
+    AvailableRoomsForDates:
+      type: object
+      description: Serializer for the AvailableRoomForDates API
+      properties:
+        structure:
+          allOf:
+          - $ref: '#/components/schemas/StructureRoom'
+          readOnly: true
+        room:
+          allOf:
+          - $ref: '#/components/schemas/Room'
+          readOnly: true
+      required:
+      - room
+      - structure
     CompleteProfile:
       type: object
       description: Serializer for the User model to complete profile

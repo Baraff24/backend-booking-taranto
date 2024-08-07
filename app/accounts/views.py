@@ -23,7 +23,7 @@ from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCre
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer, AvailableRoomsSerializer)
+                          StructureImageSerializer, AvailableRoomSerializer, AvailableRoomsForDatesSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -587,8 +587,101 @@ class StripeWebhook(APIView):
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
 
-class AvailableRoomsAPI(APIView):
-    serializer_class = AvailableRoomsSerializer
+class AvailableRoomsForDatesAPI(APIView):
+    serializer_class = AvailableRoomsForDatesSerializer
+
+    def get(self, request):
+        check_in_date = request.query_params.get('check_in')
+        check_out_date = request.query_params.get('check_out')
+
+        if not check_in_date or not check_out_date:
+            return Response({'error': 'Both check_in and check_out dates are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            creds = GoogleOAuthCredentials.objects.get(id=1)
+            credentials = Credentials(
+                token=creds.token,
+                refresh_token=creds.refresh_token,
+                token_uri=creds.token_uri,
+                client_id=creds.client_id,
+                client_secret=creds.client_secret,
+                scopes=creds.scopes.split()
+            )
+            service = build('calendar', 'v3', credentials=credentials)
+
+            available_rooms = []
+            all_rooms = Room.objects.all()
+
+            for room in all_rooms:
+                busy_dates = set()
+
+                # Get local reservations
+                local_reservations = Reservation.objects.filter(
+                    room=room,
+                    check_out__gte=check_in,
+                    check_in__lte=check_out
+                )
+
+                # Get Google Calendar events
+                events_result = service.events().list(
+                    calendarId='primary',
+                    timeMin=check_in.isoformat(),
+                    timeMax=check_out.isoformat(),
+                    singleEvents=True,
+                    orderBy='startTime'
+                ).execute()
+                events = events_result.get('items', [])
+
+                # Collect busy dates from local reservations
+                for reservation in local_reservations:
+                    current_date = reservation.check_in
+                    while current_date <= reservation.check_out:
+                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                        current_date += timedelta(days=1)
+
+                # Collect busy dates from Google Calendar events
+                for event in events:
+                    start_date = datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date'))[:-1])
+                    end_date = datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date'))[:-1])
+                    current_date = start_date
+                    while current_date < end_date:
+                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                        current_date += timedelta(days=1)
+
+                # Check if room is available
+                is_available = True
+                current_date = check_in.date()
+                while current_date <= check_out.date():
+                    if current_date.strftime('%Y-%m-%d') in busy_dates:
+                        is_available = False
+                        break
+                    current_date += timedelta(days=1)
+
+                if is_available:
+                    available_rooms.append({
+                        'structure': StructureRoomSerializer(room.structure).data,
+                        'room': RoomSerializer(room).data
+                    })
+
+            response_data = {
+                'rooms': available_rooms
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except GoogleOAuthCredentials.DoesNotExist:
+            return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AvailableRoomAPI(APIView):
+    serializer_class = AvailableRoomSerializer
 
     def get(self, request):
         room_ids = request.query_params.getlist('rooms')
@@ -658,18 +751,22 @@ class AvailableRoomsAPI(APIView):
                         busy_dates.add(current_date.strftime('%Y-%m-%d'))
                         current_date += timedelta(days=1)
 
-                # Determine available dates
+                # Determine available and unavailable dates
                 current_date = check_in.date()
                 available_dates = []
+                unavailable_dates = []
                 while current_date <= check_out.date():
                     if current_date.strftime('%Y-%m-%d') not in busy_dates:
                         available_dates.append(current_date.strftime('%Y-%m-%d'))
+                    else:
+                        unavailable_dates.append(current_date.strftime('%Y-%m-%d'))
                     current_date += timedelta(days=1)
 
-                if available_dates:
+                if available_dates or unavailable_dates:
                     available_rooms.append({
                         'structure_room': StructureRoomSerializer(room.structure).data,
-                        'available_dates': available_dates
+                        'available_dates': available_dates,
+                        'unavailable_dates': unavailable_dates
                     })
 
             response_data = {

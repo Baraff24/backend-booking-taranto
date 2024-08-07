@@ -7,9 +7,9 @@ from rest_framework.routers import DefaultRouter
 from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     StructureViewSet, RoomViewSet, ReservationViewSet,
                     DiscountViewSet, GoogleCalendarInitAPI, GoogleCalendarRedirectAPI,
-                    RentRoomAPI, AvailableRoomsAPI, StripeWebhook,
+                    RentRoomAPI, AvailableRoomAPI, StripeWebhook,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
-                    AddStructureImageAPI, GetStructureImagesAPI,
+                    AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
                     DeleteStructureImageAPI, CancelReservationAPI)
 
 # Create the router and register the viewsets with it.
@@ -32,7 +32,8 @@ urlpatterns = [
     path('structures/images/<int:pk>/', DeleteStructureImageAPI.as_view(), name='delete-structure-image'),
     path('structures/<int:pk>/images/', GetStructureImagesAPI.as_view(), name='get-structure-images'),
     path('room/rent-room/', RentRoomAPI.as_view(), name='rent-room'),
-    path('room/available-rooms/', AvailableRoomsAPI.as_view(), name='available-rooms'),
+    path('room/available-rooms-for-dates/', AvailableRoomsForDatesAPI.as_view(), name='available-rooms-for-dates'),
+    path('room/available-room/', AvailableRoomAPI.as_view(), name='available-rooms'),
     path('stripe/create-checkout-session/', CreateCheckoutSessionLinkAPI.as_view(), name='create-checkout-session'),
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
     path('stripe-webhook/', StripeWebhook.as_view(), name='stripe-webhook'),
