@@ -667,7 +667,7 @@ class AvailableRoomsForDatesAPI(APIView):
 
                 if is_available:
                     available_rooms.append({
-                        'room': self.serializer_class(room).data
+                        self.serializer_class(room).data
                     })
 
             return Response(available_rooms, status=status.HTTP_200_OK)
