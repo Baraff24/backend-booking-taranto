@@ -630,6 +630,13 @@ class AvailableRoomsForDatesAPI(APIView):
                     check_in__lte=check_out
                 )
 
+                # Collect busy dates from local reservations
+                for reservation in local_reservations:
+                    current_date = reservation.check_in
+                    while current_date <= reservation.check_out:
+                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                        current_date += timedelta(days=1)
+
                 # Get Google Calendar events
                 events_result = service.events().list(
                     calendarId='primary',
@@ -640,21 +647,22 @@ class AvailableRoomsForDatesAPI(APIView):
                 ).execute()
                 events = events_result.get('items', [])
 
-                # Collect busy dates from local reservations
-                for reservation in local_reservations:
-                    current_date = reservation.check_in
-                    while current_date <= reservation.check_out:
-                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                        current_date += timedelta(days=1)
-
                 # Collect busy dates from Google Calendar events
                 for event in events:
-                    start_date = parse_datetime(event['start'].get('dateTime', event['start'].get('date'))[:-1])
-                    end_date = parse_datetime(event['end'].get('dateTime', event['end'].get('date'))[:-1])
-                    current_date = start_date
-                    while current_date < end_date:
-                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                        current_date += timedelta(days=1)
+                    event_summary = event.get('summary', '').lower()
+                    room_name_in_event = room.name.lower() in event_summary
+                    if room_name_in_event:
+                        start_date_str = event['start'].get('dateTime', event['start'].get('date'))
+                        end_date_str = event['end'].get('dateTime', event['end'].get('date'))
+
+                        # Parsing the start and end dates using dateutil.parser
+                        start_date = parse_datetime(start_date_str)
+                        end_date = parse_datetime(end_date_str)
+
+                        current_date = start_date
+                        while current_date < end_date:
+                            busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                            current_date += timedelta(days=1)
 
                 # Check if room is available
                 is_available = True
@@ -719,6 +727,13 @@ class AvailableRoomAPI(APIView):
                     check_in__lte=check_out
                 )
 
+                # Collect busy dates from local reservations
+                for reservation in local_reservations:
+                    current_date = reservation.check_in
+                    while current_date <= reservation.check_out:
+                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                        current_date += timedelta(days=1)
+
                 # Get Google Calendar events
                 events_result = service.events().list(
                     calendarId='primary',
@@ -728,13 +743,6 @@ class AvailableRoomAPI(APIView):
                     orderBy='startTime'
                 ).execute()
                 events = events_result.get('items', [])
-
-                # Collect busy dates from local reservations
-                for reservation in local_reservations:
-                    current_date = reservation.check_in
-                    while current_date <= reservation.check_out:
-                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                        current_date += timedelta(days=1)
 
                 # Collect busy dates from Google Calendar events
                 for event in events:
