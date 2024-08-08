@@ -277,7 +277,7 @@ class GetStructureImagesAPI(APIView):
         Get the user object by primary
         """
         try:
-            return StructureImage.objects.get(pk=pk)
+            return Structure.objects.get(pk=pk)
         except ObjectDoesNotExist:
             return None
 
