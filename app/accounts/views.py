@@ -19,12 +19,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
-    handle_refund_succeeded
+    handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, get_busy_dates_from_calendar
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer, AvailableRoomSerializer, AvailableRoomsForDatesSerializer)
+                          StructureImageSerializer, AvailableRoomsForDatesSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -596,12 +596,8 @@ class AvailableRoomsForDatesAPI(APIView):
         check_out_date = request.query_params.get('check_out')
         number_of_people = request.query_params.get('number_of_people')
 
-        if not check_in_date or not check_out_date:
-            return Response({'error': 'Both check_in and check_out dates are required.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if not number_of_people:
-            return Response({'error': 'The number_of_people parameter is required.'},
+        if not check_in_date or not check_out_date or not number_of_people:
+            return Response({'error': 'Both check_in and check_out dates and number_of_people are required.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -609,95 +605,37 @@ class AvailableRoomsForDatesAPI(APIView):
             check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             max_people = int(number_of_people)
         except ValueError:
-            return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            creds = GoogleOAuthCredentials.objects.get(id=1)
-            credentials = Credentials(
-                token=creds.token,
-                refresh_token=creds.refresh_token,
-                token_uri=creds.token_uri,
-                client_id=creds.client_id,
-                client_secret=creds.client_secret,
-                scopes=creds.scopes.split()
-            )
-            service = build('calendar', 'v3', credentials=credentials)
-
-            available_rooms = []
-            all_rooms = Room.objects.filter(max_people__gte=max_people)
-
-            for room in all_rooms:
-                busy_dates = set()
-
-                # Get local reservations
-                local_reservations = Reservation.objects.filter(
-                    room=room,
-                    check_out__gte=check_in,
-                    check_in__lte=check_out
-                )
-
-                # Collect busy dates from local reservations
-                for reservation in local_reservations:
-                    current_date = reservation.check_in
-                    while current_date <= reservation.check_out:
-                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                        current_date += timedelta(days=1)
-
-                # Get Google Calendar events
-                events_result = service.events().list(
-                    calendarId='primary',
-                    timeMin=check_in.isoformat(),
-                    timeMax=check_out.isoformat(),
-                    singleEvents=True,
-                    orderBy='startTime'
-                ).execute()
-                events = events_result.get('items', [])
-
-                # Collect busy dates from Google Calendar events
-                for event in events:
-                    event_summary = event.get('summary', '').lower()
-                    room_name_in_event = room.name.lower() in event_summary
-                    if room_name_in_event:
-                        start_date_str = event['start'].get('dateTime', event['start'].get('date'))
-                        end_date_str = event['end'].get('dateTime', event['end'].get('date'))
-
-                        # Parsing the start and end dates using dateutil.parser
-                        start_date = parse_datetime(start_date_str)
-                        end_date = parse_datetime(end_date_str)
-
-                        current_date = start_date
-                        while current_date < end_date:
-                            busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                            current_date += timedelta(days=1)
-
-                # Check if room is available
-                is_available = True
-                current_date = check_in.date()
-                while current_date <= check_out.date():
-                    if current_date.strftime('%Y-%m-%d') in busy_dates:
-                        is_available = False
-                        break
-                    current_date += timedelta(days=1)
-
-                if is_available:
-                    available_rooms.append(self.serializer_class(room).data)
-
-            return Response(available_rooms, status=status.HTTP_200_OK)
-
-        except GoogleOAuthCredentials.DoesNotExist:
+        service = get_google_calendar_service()
+        if not service:
             return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        available_rooms = []
+        all_rooms = Room.objects.filter(max_people__gte=max_people)
+
+        for room in all_rooms:
+            busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
+            busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
+
+            is_available = all(check_in + timedelta(days=i) not in busy_dates for i in range((check_out - check_in).days + 1))
+
+            if is_available:
+                available_rooms.append(self.serializer_class(room).data)
+
+        return Response(available_rooms, status=status.HTTP_200_OK)
 
 
 class AvailableRoomAPI(APIView):
-    serializer_class = AvailableRoomSerializer
+    serializer_class = AvailableRoomsForDatesSerializer
 
     def get(self, request):
-        room_ids = request.query_params.getlist('rooms')
+        room_id = request.query_params.get('room_id')
         check_in_date = request.query_params.get('check_in')
         check_out_date = request.query_params.get('check_out')
 
-        if not check_in_date or not check_out_date:
-            return Response({'error': 'Both check_in and check_out dates are required.'},
+        if not room_id or not check_in_date or not check_out_date:
+            return Response({'error': 'room_id, check_in and check_out dates are required.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -706,85 +644,35 @@ class AvailableRoomAPI(APIView):
         except ValueError:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        rooms = Room.objects.filter(id__in=room_ids)
-        if not rooms:
-            return Response({'error': 'One or more rooms do not exist.'}, status=status.HTTP_404_NOT_FOUND)
+        room = Room.objects.filter(id=room_id).first()
+        if not room:
+            return Response({'error': 'Room does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
-        available_rooms = []
-        try:
-            creds = GoogleOAuthCredentials.objects.get(id=1)
-            credentials = Credentials(
-                token=creds.token,
-                refresh_token=creds.refresh_token,
-                token_uri=creds.token_uri,
-                client_id=creds.client_id,
-                client_secret=creds.client_secret,
-                scopes=creds.scopes.split()
-            )
-            service = build('calendar', 'v3', credentials=credentials)
-
-            for room in rooms:
-                busy_dates = set()
-
-                # Get local reservations
-                local_reservations = Reservation.objects.filter(
-                    room=room,
-                    check_out__gte=check_in,
-                    check_in__lte=check_out
-                )
-
-                # Collect busy dates from local reservations
-                for reservation in local_reservations:
-                    current_date = reservation.check_in
-                    while current_date <= reservation.check_out:
-                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                        current_date += timedelta(days=1)
-
-                # Get Google Calendar events
-                events_result = service.events().list(
-                    calendarId='primary',
-                    timeMin=check_in.isoformat(),
-                    timeMax=check_out.isoformat(),
-                    singleEvents=True,
-                    orderBy='startTime'
-                ).execute()
-                events = events_result.get('items', [])
-
-                # Collect busy dates from Google Calendar events
-                for event in events:
-                    start_date = parse_datetime(event['start'].get('dateTime', event['start'].get('date'))[:-1])
-                    end_date = parse_datetime(event['end'].get('dateTime', event['end'].get('date'))[:-1])
-                    current_date = start_date
-                    while current_date < end_date:
-                        busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                        current_date += timedelta(days=1)
-
-                # Determine available and unavailable dates
-                current_date = check_in.date()
-                available_dates = []
-                unavailable_dates = []
-                while current_date <= check_out.date():
-                    if current_date.strftime('%Y-%m-%d') not in busy_dates:
-                        available_dates.append(current_date.strftime('%Y-%m-%d'))
-                    else:
-                        unavailable_dates.append(current_date.strftime('%Y-%m-%d'))
-                    current_date += timedelta(days=1)
-
-                if available_dates or unavailable_dates:
-                    available_rooms.append({
-                        'structure_room': StructureSerializer(room.structure).data,
-                        'available_dates': available_dates,
-                        'unavailable_dates': unavailable_dates
-                    })
-
-            response_data = {
-                'rooms': available_rooms
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except GoogleOAuthCredentials.DoesNotExist:
+        service = get_google_calendar_service()
+        if not service:
             return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
+        busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
+
+        available_dates = []
+        unavailable_dates = []
+        current_date = check_in.date()
+        while current_date <= check_out.date():
+            if current_date.strftime('%Y-%m-%d') not in busy_dates:
+                available_dates.append(current_date.strftime('%Y-%m-%d'))
+            else:
+                unavailable_dates.append(current_date.strftime('%Y-%m-%d'))
+            current_date += timedelta(days=1)
+
+        room_data = self.serializer_class({
+            'structure': room.structure,
+            'room': room,
+            'available_dates': available_dates,
+            'unavailable_dates': unavailable_dates
+        }).data
+
+        return Response(room_data, status=status.HTTP_200_OK)
 
 
 class RentRoomAPI(APIView):

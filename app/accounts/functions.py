@@ -1,19 +1,24 @@
 """
 This file contains all the functions and decorators used in the accounts app.
 """
+from datetime import timedelta
+
 import django.contrib.auth
 from functools import wraps
 from decouple import config
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
 from rest_framework import status
 from rest_framework.response import Response
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
 from allauth.account.models import EmailAddress
 
 from accounts.constants import COMPLETE, ADMIN
-from accounts.models import Reservation, Discount
+from accounts.models import Reservation, Discount, GoogleOAuthCredentials
 
 User = django.contrib.auth.get_user_model()
 EMAIL = config('EMAIL_HOST_USER', '')
@@ -27,6 +32,7 @@ def is_active(view_func):
     """
     Decorator to check if user is active
     """
+
     @wraps(view_func)
     def decorator(request, *args, **kwargs):
         user = request.user
@@ -39,7 +45,7 @@ def is_active(view_func):
                     "Error": "You have to complete the data completion process",
                     "userStatus": obj[0].status
                 },
-                                status=status.HTTP_403_FORBIDDEN)
+                    status=status.HTTP_403_FORBIDDEN)
             return Response({"Error": "Your email is not verified"},
                             status=status.HTTP_403_FORBIDDEN)
         return Response({"Error": "Your account is not active"},
@@ -52,6 +58,7 @@ def is_admin(view_func):
     """
     Decorator to check if user has the status type of ADMIN
     """
+
     @wraps(view_func)
     def decorator(request, *args, **kwargs):
         user = request.user
@@ -79,7 +86,8 @@ def handle_payment_intent_succeeded(payment_intent):
         try:
             # Send an email to the user to confirm the payment
             subject = 'Conferma di pagamento per la tua prenotazione'
-            html_message = render_to_string('account/stripe/payment_confirmation_email.html', {'reservation': reservation})
+            html_message = render_to_string('account/stripe/payment_confirmation_email.html',
+                                            {'reservation': reservation})
             plain_message = strip_tags(html_message)
             from_email = EMAIL
             to_email = reservation.user.email
@@ -105,7 +113,8 @@ def handle_refund_succeeded(refund):
         try:
             # Send an email to the user to confirm the refund
             subject = 'Conferma di rimborso per la tua prenotazione'
-            html_message = render_to_string('account/stripe/refund_confirmation_email.html', {'reservation': reservation})
+            html_message = render_to_string('account/stripe/refund_confirmation_email.html',
+                                            {'reservation': reservation})
             plain_message = strip_tags(html_message)
             from_email = EMAIL
             to_email = reservation.user.email
@@ -164,3 +173,61 @@ def calculate_discount(reservation):
     except Discount.DoesNotExist:
         return Response({"Error": "Discount not found"},
                         status=status.HTTP_404_NOT_FOUND)
+
+
+def get_google_calendar_service():
+    try:
+        creds = GoogleOAuthCredentials.objects.get(id=1)
+        credentials = Credentials(
+            token=creds.token,
+            refresh_token=creds.refresh_token,
+            token_uri=creds.token_uri,
+            client_id=creds.client_id,
+            client_secret=creds.client_secret,
+            scopes=creds.scopes.split()
+        )
+        service = build('calendar', 'v3', credentials=credentials)
+        return service
+    except GoogleOAuthCredentials.DoesNotExist:
+        return None
+
+
+def get_busy_dates_from_reservations(room, check_in, check_out):
+    busy_dates = set()
+    local_reservations = Reservation.objects.filter(
+        room=room,
+        check_out__gte=check_in,
+        check_in__lte=check_out
+    )
+    for reservation in local_reservations:
+        current_date = reservation.check_in
+        while current_date <= reservation.check_out:
+            busy_dates.add(current_date.strftime('%Y-%m-%d'))
+            current_date += timedelta(days=1)
+    return busy_dates
+
+
+def get_busy_dates_from_calendar(service, room, check_in, check_out):
+    busy_dates = set()
+    events_result = service.events().list(
+        calendarId='primary',
+        timeMin=check_in.isoformat(),
+        timeMax=check_out.isoformat(),
+        singleEvents=True,
+        orderBy='startTime'
+    ).execute()
+    events = events_result.get('items', [])
+
+    for event in events:
+        event_summary = event.get('summary', '').lower()
+        room_name_in_event = room.name.lower() in event_summary
+        if room_name_in_event:
+            start_date_str = event['start'].get('dateTime', event['start'].get('date'))
+            end_date_str = event['end'].get('dateTime', event['end'].get('date'))
+            start_date = parse_datetime(start_date_str)
+            end_date = parse_datetime(end_date_str)
+            current_date = start_date
+            while current_date < end_date:
+                busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                current_date += timedelta(days=1)
+    return busy_dates

@@ -107,14 +107,6 @@ class AvailableRoomsForDatesSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'room_status', 'services', 'cost_per_night', 'max_people', 'structure']
 
 
-class AvailableRoomSerializer(serializers.Serializer):
-    """
-    Serializer for the AvailableRoom API
-    """
-    structure_room = StructureRoomSerializer(read_only=True)
-    available_dates = serializers.ListField(child=serializers.DateField())
-
-
 class DiscountSerializer(serializers.ModelSerializer):
     """
     Serializer for the Discount model
