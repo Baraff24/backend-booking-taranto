@@ -40,7 +40,7 @@ class StructureImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StructureImage
-        fields = ['id', 'image', 'description', 'structure']
+        fields = ['id', 'image', 'alt', 'structure']
 
 
 class StructureSerializer(serializers.ModelSerializer):
