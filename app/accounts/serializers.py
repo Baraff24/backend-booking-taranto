@@ -1,7 +1,7 @@
 """
 Serializers for the accounts app.
 """
-
+from django.utils import timezone
 from rest_framework import serializers
 from .models import User, Structure, Room, Reservation, Discount, StructureImage
 
@@ -147,7 +147,8 @@ class ReservationSerializer(serializers.ModelSerializer):
         if data['check_in'] >= data['check_out']:
             raise serializers.ValidationError("Check-in date must be before check-out date.")
         if data['number_of_people'] > data['room'].max_people:
-            raise serializers.ValidationError("Number of people must be less than or equal to the maximum number of people allowed in the room.")
+            raise serializers.ValidationError(
+                "Number of people must be less than or equal to the maximum number of people allowed in the room.")
         return data
 
 
@@ -190,3 +191,38 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
         if value <= 0:
             raise serializers.ValidationError("Number of people must be a positive integer.")
         return value
+
+
+class SchedinaSerializer(serializers.Serializer):
+    tipo_alloggiati = serializers.CharField(max_length=2)
+    data_arrivo = serializers.DateField(input_formats=['%d/%m/%Y'])
+    numero_giorni_permanenza = serializers.IntegerField(min_value=1, max_value=30)
+    cognome = serializers.CharField(max_length=50)
+    nome = serializers.CharField(max_length=30)
+    sesso = serializers.ChoiceField(choices=[('1', 'M'), ('2', 'F')])
+    data_nascita = serializers.DateField(input_formats=['%d/%m/%Y'])
+    comune_nascita = serializers.CharField(max_length=9)
+    provincia_nascita = serializers.CharField(max_length=2)
+    stato_nascita = serializers.CharField(max_length=9)
+    cittadinanza = serializers.CharField(max_length=9)
+    tipo_documento = serializers.CharField(max_length=5)
+    numero_documento = serializers.CharField(max_length=20)
+    luogo_rilascio_documento = serializers.CharField(max_length=9)
+    id_appartamento = serializers.CharField(max_length=6)
+
+
+class GenerateXmlAndSendToDmsSerializer(serializers.Serializer):
+    utente = serializers.CharField(max_length=100)
+    token = serializers.CharField(max_length=255)
+    elenco_schedine = SchedinaSerializer(many=True)
+    id_appartamento = serializers.IntegerField()
+
+    @staticmethod
+    def validate_elenco_schedine(value):
+        if not value:
+            raise serializers.ValidationError("Elenco delle Schedine non può essere vuoto.")
+        return value
+
+    def validate(self, data):
+        # Custom validations if needed
+        return data

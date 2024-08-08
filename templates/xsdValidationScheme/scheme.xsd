@@ -1,0 +1,37 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+           targetNamespace="http://www.w3.org/2003/05/soap-envelope"
+           elementFormDefault="qualified">
+
+    <xs:element name="Envelope">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Header" minOccurs="0" maxOccurs="1">
+                    <xs:complexType/>
+                </xs:element>
+                <xs:element name="Body">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="GestioneAppartamenti_Send" xmlns:all="AlloggiatiService">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="Utente" type="xs:string"/>
+                                        <xs:element name="token" type="xs:string"/>
+                                        <xs:element name="ElencoSchedine">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="string" type="xs:string" maxOccurs="unbounded"/>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+                                        <xs:element name="IdAppartamento" type="xs:int"/>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

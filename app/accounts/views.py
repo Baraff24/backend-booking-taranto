@@ -1,9 +1,10 @@
 """
 This module contains the views of the accounts app.
 """
+import os
+
 import stripe
 from datetime import datetime, timedelta, timezone
-from dateutil.parser import parse as parse_datetime
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, When, Value, IntegerField
@@ -17,6 +18,9 @@ from rest_framework import status, filters, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+import xml.etree.ElementTree as ET
+import requests
+from lxml import etree
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, get_busy_dates_from_calendar
@@ -24,7 +28,7 @@ from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCre
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer, AvailableRoomsForDatesSerializer)
+                          StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -901,3 +905,70 @@ class CancelReservationAPI(APIView):
             return Response({'error': 'Reservation not found.'}, status=status.HTTP_404_NOT_FOUND)
         except stripe.error.StripeError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GenerateXmlAndSendToDmsAPI(APIView):
+    """
+    API to generate an XML file and send it to a Document Management System
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = GenerateXmlAndSendToDmsSerializer
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def post(self, request):
+        """
+        Generate an XML file and send it to a DMS
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        utente = serializer.validated_data['utente']
+        token = serializer.validated_data['token']
+        elenco_schedine = serializer.validated_data['elenco_schedine']
+        id_appartamento = serializer.validated_data['id_appartamento']
+
+        try:
+            # Create XML
+            root = ET.Element("soap:Envelope", attrib={
+                "xmlns:soap": "http://www.w3.org/2003/05/soap-envelope",
+                "xmlns:all": "AlloggiatiService"
+            })
+            body = ET.SubElement(root, "soap:Body")
+            gestione = ET.SubElement(body, "all:GestioneAppartamenti_Send")
+
+            ET.SubElement(gestione, "all:Utente").text = utente
+            ET.SubElement(gestione, "all:token").text = token
+
+            elenco = ET.SubElement(gestione, "all:ElencoSchedine")
+            for schedina in elenco_schedine:
+                ET.SubElement(elenco, "all:string").text = schedina
+
+            ET.SubElement(gestione, "all:IdAppartamento").text = str(id_appartamento)
+
+            xml_data = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+
+            # XML Validation
+            xsd_file_path = os.path.join(settings.TEMPLATES[0]['DIRS'][0], 'xsdValidationScheme', 'scheme.xsd')
+            with open(xsd_file_path, 'r') as xsd_file:
+                schema_root = etree.XML(xsd_file.read())
+                schema = etree.XMLSchema(schema_root)
+                xml_doc = etree.fromstring(xml_data)
+                schema.assertValid(xml_doc)
+
+            # Send XML
+            url = "DMS_URL"
+            headers = {'Content-Type': 'application/xml'}
+            response = requests.post(url, data=xml_data, headers=headers)
+
+            response.raise_for_status()
+            return Response({"message": "Data sent successfully"}, status=status.HTTP_200_OK)
+
+        except etree.DocumentInvalid as e:
+            return Response({"error": f"Invalid XML: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except requests.exceptions.RequestException as e:
+            return Response({"error": f"Error while sending data: {str(e)}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
