@@ -24,7 +24,7 @@ from lxml import etree
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, get_busy_dates_from_calendar
-from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials
+from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
@@ -217,7 +217,7 @@ class AddStructureImageAPI(APIView):
         Get the user object by primary
         """
         try:
-            return User.objects.get(pk=pk)
+            return StructureImage.objects.get(pk=pk)
         except ObjectDoesNotExist:
             return None
 
@@ -248,7 +248,7 @@ class DeleteStructureImageAPI(APIView):
         Get the user object by primary
         """
         try:
-            return User.objects.get(pk=pk)
+            return StructureImage.objects.get(pk=pk)
         except ObjectDoesNotExist:
             return None
 
@@ -277,7 +277,7 @@ class GetStructureImagesAPI(APIView):
         Get the user object by primary
         """
         try:
-            return User.objects.get(pk=pk)
+            return StructureImage.objects.get(pk=pk)
         except ObjectDoesNotExist:
             return None
 
