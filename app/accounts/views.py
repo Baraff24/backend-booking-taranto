@@ -204,6 +204,36 @@ class CreateStructureAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class GetStructureImagesAPI(APIView):
+    """
+    API to get all images of a structure
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = StructureImageSerializer
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the user object by primary
+        """
+        try:
+            return Structure.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    def get(self, request, pk):
+        """
+        Get all images of a structure
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        images = obj.images.all()
+        serializer = self.serializer_class(images, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class AddStructureImageAPI(APIView):
     """
     API to add an image to a structure
@@ -253,7 +283,7 @@ class DeleteStructureImageAPI(APIView):
             return None
 
     @method_decorator(is_active)
-    def delete(self, pk):
+    def delete(self, request, pk):
         """
         Delete an image from a structure
         """
@@ -262,36 +292,6 @@ class DeleteStructureImageAPI(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         obj.delete(structure=obj)
         return Response(status=status.HTTP_200_OK)
-
-
-class GetStructureImagesAPI(APIView):
-    """
-    API to get all images of a structure
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = StructureImageSerializer
-
-    @staticmethod
-    def get_object(pk):
-        """
-        Get the user object by primary
-        """
-        try:
-            return Structure.objects.get(pk=pk)
-        except ObjectDoesNotExist:
-            return None
-
-    @method_decorator(is_active)
-    def get(self, pk):
-        """
-        Get all images of a structure
-        """
-        obj = self.get_object(pk)
-        if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        images = obj.images.all()
-        serializer = self.serializer_class(images, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class StructureViewSet(viewsets.ModelViewSet):
@@ -609,7 +609,9 @@ class AvailableRoomsForDatesAPI(APIView):
             check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             max_people = int(number_of_people)
         except ValueError:
-            return Response({'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         service = get_google_calendar_service()
         if not service:
@@ -622,7 +624,8 @@ class AvailableRoomsForDatesAPI(APIView):
             busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
             busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
 
-            is_available = all(check_in + timedelta(days=i) not in busy_dates for i in range((check_out - check_in).days + 1))
+            is_available = all(
+                check_in + timedelta(days=i) not in busy_dates for i in range((check_out - check_in).days + 1))
 
             if is_available:
                 available_rooms.append(self.serializer_class(room).data)
