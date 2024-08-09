@@ -209,6 +209,35 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/accounts/generate-xml-and-send-to-dms/:
+    post:
+      operationId: accounts_generate_xml_and_send_to_dms_create
+      description: Generate an XML file and send it to a DMS
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateXmlAndSendToDms'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GenerateXmlAndSendToDms'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GenerateXmlAndSendToDms'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateXmlAndSendToDms'
+          description: ''
   /api/v1/accounts/google-calendar/init/:
     get:
       operationId: accounts_google_calendar_init_retrieve
@@ -218,7 +247,6 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
-      - {}
       responses:
         '200':
           description: No response body
@@ -440,7 +468,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AvailableRoom'
+                $ref: '#/components/schemas/AvailableRoomsForDates'
           description: ''
   /api/v1/accounts/room/available-rooms-for-dates/:
     get:
@@ -959,8 +987,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/StructureImage'
           description: ''
+  /api/v1/accounts/structures/{id}/images/add/:
     post:
-      operationId: accounts_structures_images_create
+      operationId: accounts_structures_images_add_create
       description: Add an image to a structure
       parameters:
       - in: path
@@ -993,9 +1022,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/StructureImage'
           description: ''
-  /api/v1/accounts/structures/images/{id}/:
+  /api/v1/accounts/structures/images/{id}/delete/:
     delete:
-      operationId: accounts_structures_images_destroy
+      operationId: accounts_structures_images_delete_destroy
       description: Delete an image from a structure
       parameters:
       - in: path
@@ -1395,36 +1424,37 @@ paths:
           description: ''
 components:
   schemas:
-    AvailableRoom:
-      type: object
-      description: Serializer for the AvailableRoom API
-      properties:
-        structure_room:
-          allOf:
-          - $ref: '#/components/schemas/StructureRoom'
-          readOnly: true
-        available_dates:
-          type: array
-          items:
-            type: string
-            format: date
-      required:
-      - available_dates
-      - structure_room
     AvailableRoomsForDates:
       type: object
       description: Serializer for the AvailableRoomForDates API
       properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        room_status:
+          $ref: '#/components/schemas/RoomStatusEnum'
+        services:
+          type: string
+        cost_per_night:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        max_people:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
         structure:
           allOf:
-          - $ref: '#/components/schemas/StructureRoom'
-          readOnly: true
-        room:
-          allOf:
-          - $ref: '#/components/schemas/Room'
+          - $ref: '#/components/schemas/Structure'
           readOnly: true
       required:
-      - room
+      - cost_per_night
+      - id
+      - max_people
+      - name
       - structure
     CompleteProfile:
       type: object
@@ -1505,6 +1535,26 @@ components:
           format: email
       required:
       - email
+    GenerateXmlAndSendToDms:
+      type: object
+      properties:
+        utente:
+          type: string
+          maxLength: 100
+        token:
+          type: string
+          maxLength: 255
+        elenco_schedine:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedina'
+        id_appartamento:
+          type: integer
+      required:
+      - elenco_schedine
+      - id_appartamento
+      - token
+      - utente
     Login:
       type: object
       properties:
@@ -1808,6 +1858,78 @@ components:
       description: |-
         * `AVAILABLE` - Available
         * `UNAVAILABLE` - Unavailable
+    Schedina:
+      type: object
+      properties:
+        tipo_alloggiati:
+          type: string
+          maxLength: 2
+        data_arrivo:
+          type: string
+          format: date
+        numero_giorni_permanenza:
+          type: integer
+          maximum: 30
+          minimum: 1
+        cognome:
+          type: string
+          maxLength: 50
+        nome:
+          type: string
+          maxLength: 30
+        sesso:
+          $ref: '#/components/schemas/SessoEnum'
+        data_nascita:
+          type: string
+          format: date
+        comune_nascita:
+          type: string
+          maxLength: 9
+        provincia_nascita:
+          type: string
+          maxLength: 2
+        stato_nascita:
+          type: string
+          maxLength: 9
+        cittadinanza:
+          type: string
+          maxLength: 9
+        tipo_documento:
+          type: string
+          maxLength: 5
+        numero_documento:
+          type: string
+          maxLength: 20
+        luogo_rilascio_documento:
+          type: string
+          maxLength: 9
+        id_appartamento:
+          type: string
+          maxLength: 6
+      required:
+      - cittadinanza
+      - cognome
+      - comune_nascita
+      - data_arrivo
+      - data_nascita
+      - id_appartamento
+      - luogo_rilascio_documento
+      - nome
+      - numero_documento
+      - numero_giorni_permanenza
+      - provincia_nascita
+      - sesso
+      - stato_nascita
+      - tipo_alloggiati
+      - tipo_documento
+    SessoEnum:
+      enum:
+      - '1'
+      - '2'
+      type: string
+      description: |-
+        * `1` - M
+        * `2` - F
     StatusEnum:
       enum:
       - COMPLETE
@@ -1853,7 +1975,7 @@ components:
         image:
           type: string
           format: uri
-        description:
+        alt:
           type: string
           maxLength: 100
         structure:

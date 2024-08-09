@@ -290,7 +290,7 @@ class DeleteStructureImageAPI(APIView):
         obj = self.get_object(pk)
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        obj.delete(structure=obj)
+        obj.delete()
         return Response(status=status.HTTP_200_OK)
 
 
