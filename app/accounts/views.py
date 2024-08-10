@@ -247,7 +247,7 @@ class AddStructureImageAPI(APIView):
         Get the user object by primary
         """
         try:
-            return StructureImage.objects.get(pk=pk)
+            return Structure.objects.get(pk=pk)
         except ObjectDoesNotExist:
             return None
 
@@ -256,8 +256,8 @@ class AddStructureImageAPI(APIView):
         """
         Add an image to a structure
         """
-        structure = self.get_object(pk)
-        if structure is None:
+        obj = self.get_object(pk)
+        if obj is None:
             return Response({"detail": "Structure not found."}, status=status.HTTP_404_NOT_FOUND)
 
         images = request.FILES.getlist('images')
