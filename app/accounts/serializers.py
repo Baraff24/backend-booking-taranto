@@ -42,6 +42,11 @@ class StructureImageSerializer(serializers.ModelSerializer):
         model = StructureImage
         fields = ['id', 'image', 'alt', 'structure']
 
+    def get_absolute_url(self, obj):
+        request = self.context.get('request')
+        image_url = obj.image.url
+        return request.build_absolute_uri(image_url)
+
 
 class StructureSerializer(serializers.ModelSerializer):
     """

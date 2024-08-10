@@ -271,7 +271,7 @@ class AddStructureImageAPI(APIView):
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.serializer_class(structure_images, many=True)
+        serializer = self.serializer_class(structure_images, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
