@@ -37,11 +37,16 @@ class StructureImageSerializer(serializers.ModelSerializer):
     """
     Serializer for the StructureImage model
     """
-    image = serializers.ImageField(max_length=None, use_url=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = StructureImage
         fields = ['id', 'image', 'alt', 'structure']
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        image_url = obj.image.url
+        return request.build_absolute_uri(image_url)
 
 
 class StructureSerializer(serializers.ModelSerializer):
