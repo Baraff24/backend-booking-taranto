@@ -264,7 +264,7 @@ class AddStructureImageAPI(APIView):
         if not images:
             return Response({"detail": "No images provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-        structure_images = [StructureImage(structure=structure, image=image) for image in images]
+        structure_images = [StructureImage(structure=obj, image=image) for image in images]
 
         try:
             StructureImage.objects.bulk_create(structure_images)
