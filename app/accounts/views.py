@@ -94,7 +94,7 @@ class UserDetailAPI(APIView):
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = self.serializer_class(obj)
-        if request.user.is_superuser:
+        if request.user.is_superuser or request.user.type == ADMIN:
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_403_FORBIDDEN)
 
