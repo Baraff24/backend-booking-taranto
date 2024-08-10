@@ -230,7 +230,7 @@ class GetStructureImagesAPI(APIView):
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         images = obj.images.all()
-        serializer = self.serializer_class(images, many=True)
+        serializer = self.serializer_class(images, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
