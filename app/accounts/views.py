@@ -256,14 +256,23 @@ class AddStructureImageAPI(APIView):
         """
         Add an image to a structure
         """
-        obj = self.get_object(pk)
-        if obj is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        structure = self.get_object(pk)
+        if not structure:
+            return Response({"detail": "Structure not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        images = request.FILES.getlist('images')
+        if not images:
+            return Response({"detail": "No images provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        structure_images = [StructureImage(structure=structure, image=image) for image in images]
+
+        try:
+            StructureImage.objects.bulk_create(structure_images)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(structure_images, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class DeleteStructureImageAPI(APIView):
