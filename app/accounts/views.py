@@ -257,7 +257,7 @@ class AddStructureImageAPI(APIView):
         Add an image to a structure
         """
         structure = self.get_object(pk)
-        if not structure:
+        if structure is None:
             return Response({"detail": "Structure not found."}, status=status.HTTP_404_NOT_FOUND)
 
         images = request.FILES.getlist('images')
