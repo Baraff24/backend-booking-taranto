@@ -165,7 +165,7 @@ class ReservationSerializer(serializers.ModelSerializer):
 
 
 class CancelReservationSerializer(serializers.Serializer):
-    reservation_id = serializers.IntegerField(required=True)
+    reservation_id = serializers.UUIDField(required=True)
 
     @staticmethod
     def validate_reservation_id(value):
@@ -173,7 +173,7 @@ class CancelReservationSerializer(serializers.Serializer):
         Verify that the reservation exists and has not been canceled
         """
         try:
-            reservation = Reservation.objects.get(id=value)
+            reservation = Reservation.objects.get(reservation_id__exact=value)
         except Reservation.DoesNotExist:
             raise serializers.ValidationError("Reservation not found.")
 
