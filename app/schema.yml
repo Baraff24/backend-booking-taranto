@@ -1508,7 +1508,8 @@ components:
       type: object
       properties:
         reservation_id:
-          type: integer
+          type: string
+          format: uuid
       required:
       - reservation_id
     CompleteProfile:
