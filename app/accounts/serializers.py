@@ -3,6 +3,8 @@ Serializers for the accounts app.
 """
 from django.utils import timezone
 from rest_framework import serializers
+
+from .constants import CANCELED
 from .models import User, Structure, Room, Reservation, Discount, StructureImage
 
 
@@ -160,6 +162,25 @@ class ReservationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Number of people must be less than or equal to the maximum number of people allowed in the room.")
         return data
+
+
+class CancelReservationSerializer(serializers.Serializer):
+    reservation_id = serializers.IntegerField(required=True)
+
+    @staticmethod
+    def validate_reservation_id(value):
+        """
+        Verify that the reservation exists and has not been canceled
+        """
+        try:
+            reservation = Reservation.objects.get(id=value)
+        except Reservation.DoesNotExist:
+            raise serializers.ValidationError("Reservation not found.")
+
+        if reservation.status == CANCELED:
+            raise serializers.ValidationError("This reservation has already been canceled.")
+
+        return value
 
 
 class ReservationCalendarSerializer(serializers.ModelSerializer):

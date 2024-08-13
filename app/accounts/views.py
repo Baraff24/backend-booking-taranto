@@ -21,14 +21,15 @@ from rest_framework.views import APIView
 import xml.etree.ElementTree as ET
 import requests
 from lxml import etree
-from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED
+from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, get_busy_dates_from_calendar
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer)
+                          StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
+                          CancelReservationSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -181,6 +182,32 @@ class AddAdminTypeUserAPI(APIView):
                 user.type = ADMIN
                 user.save()
                 return Response({'message': f'{user} is now an admin type user'}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'You are not authorized to perform this action'}, status=status.HTTP_403_FORBIDDEN)
+
+
+class RemoveAdminTypeUserAPI(APIView):
+    """
+    API to add an admin type user
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmailSerializer
+
+    @method_decorator(is_active)
+    def post(self, request):
+        """
+        Remove an admin type user
+        With a post request and his verified email,
+        an existing admin user can be made a customer type user
+        """
+        user = request.user
+        if user.is_superuser:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                user = User.objects.get(email=serializer.validated_data['email'])
+                user.type = CUSTOMER
+                user.save()
+                return Response({'message': f'{user} is now a customer type user'}, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response({'error': 'You are not authorized to perform this action'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -401,17 +428,17 @@ class ReservationViewSet(viewsets.ModelViewSet):
     @method_decorator(is_active)
     @method_decorator(is_admin)
     def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     @method_decorator(is_active)
     @method_decorator(is_admin)
     def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     @method_decorator(is_active)
     @method_decorator(is_admin)
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class DiscountViewSet(viewsets.ModelViewSet):
@@ -888,6 +915,7 @@ class CancelReservationAPI(APIView):
     API to cancel a reservation and process a refund using Stripe
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = CancelReservationSerializer
 
     @method_decorator(is_active)
     @method_decorator(is_admin)
@@ -895,32 +923,39 @@ class CancelReservationAPI(APIView):
         """
         Cancel a reservation and process a refund
         """
-        reservation_id = request.data.get('reservation_id')
+        serializer = self.serializer_class(data=request.data)
 
-        try:
-            # Retrieve the reservation
-            reservation = Reservation.objects.get(id=reservation_id)
+        if serializer.is_valid():
+            reservation_id = serializer.validated_data['reservation_id']
 
-            if not reservation.payment_intent_id:
-                return Response({'error': 'No payment intent found for this reservation.'},
-                                status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Retrieve the reservation
+                reservation = Reservation.objects.get(id=reservation_id)
 
-            # Process the refund using Stripe
-            stripe.Refund.create(
-                payment_intent=reservation.payment_intent_id,
-            )
+                if not reservation.payment_intent_id:
+                    return Response({'error': 'No payment intent found for this reservation.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
-            # Update the reservation status
-            reservation.status = CANCELED
-            reservation.save()
+                # Process the refund using Stripe
+                refund = stripe.Refund.create(
+                    payment_intent=reservation.payment_intent_id,
+                )
 
-            return Response({'message': 'Reservation canceled and refund processed successfully.'},
-                            status=status.HTTP_200_OK)
+                # Update the reservation status
+                reservation.status = CANCELED
+                reservation.save()
 
-        except Reservation.DoesNotExist:
-            return Response({'error': 'Reservation not found.'}, status=status.HTTP_404_NOT_FOUND)
-        except stripe.error.StripeError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'message': 'Reservation canceled and refund processed successfully.',
+                    'refund_id': refund.id
+                }, status=status.HTTP_200_OK)
+
+            except stripe.error.StripeError as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GenerateXmlAndSendToDmsAPI(APIView):

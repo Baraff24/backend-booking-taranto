@@ -10,13 +10,29 @@ paths:
       description: Cancel a reservation and process a refund
       tags:
       - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelReservation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelReservation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelReservation'
+        required: true
       security:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelReservation'
+          description: ''
   /api/v1/accounts/discounts/:
     get:
       operationId: accounts_discounts_list
@@ -1195,6 +1211,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/CompleteProfile'
           description: ''
+  /api/v1/accounts/users/remove-admin/:
+    post:
+      operationId: accounts_users_remove_admin_create
+      description: |-
+        Remove an admin type user
+        With a post request and his verified email,
+        an existing admin user can be made a customer type user
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Email'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Email'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Email'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Email'
+          description: ''
   /api/v1/auth/login/:
     post:
       operationId: auth_login_create
@@ -1456,6 +1504,13 @@ components:
       - max_people
       - name
       - structure
+    CancelReservation:
+      type: object
+      properties:
+        reservation_id:
+          type: integer
+      required:
+      - reservation_id
     CompleteProfile:
       type: object
       description: Serializer for the User model to complete profile
@@ -1674,6 +1729,27 @@ components:
           allOf:
           - $ref: '#/components/schemas/Room'
           readOnly: true
+        total_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        reservation_id:
+          type: string
+          format: uuid
+          readOnly: true
+        payment_intent_id:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ReservationStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedRoom:
       type: object
       description: Serializer for the Room model
@@ -1800,18 +1876,54 @@ components:
           allOf:
           - $ref: '#/components/schemas/Room'
           readOnly: true
+        total_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        reservation_id:
+          type: string
+          format: uuid
+          readOnly: true
+        payment_intent_id:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ReservationStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - check_in
       - check_out
+      - created_at
       - discount
       - email_on_reservation
       - first_name_on_reservation
       - id
       - last_name_on_reservation
       - number_of_people
+      - payment_intent_id
       - phone_on_reservation
+      - reservation_id
       - room
+      - status
+      - total_cost
       - user
+    ReservationStatusEnum:
+      enum:
+      - UNPAID
+      - PAID
+      - CANCELED
+      type: string
+      description: |-
+        * `UNPAID` - Unpaid
+        * `PAID` - Paid
+        * `CANCELED` - Canceled
     RestAuthDetail:
       type: object
       properties:
@@ -1930,14 +2042,6 @@ components:
       description: |-
         * `1` - M
         * `2` - F
-    StatusEnum:
-      enum:
-      - COMPLETE
-      - PENDING_EXTRA_DATA
-      type: string
-      description: |-
-        * `COMPLETE` - Complete
-        * `PENDING_EXTRA_DATA` - Pending Complete Data
     Structure:
       type: object
       description: Serializer for the Structure model
@@ -1974,7 +2078,7 @@ components:
           readOnly: true
         image:
           type: string
-          format: uri
+          readOnly: true
         alt:
           type: string
           maxLength: 100
@@ -2089,7 +2193,7 @@ components:
           nullable: true
           maxLength: 20
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/UserStatusEnum'
         type:
           $ref: '#/components/schemas/TypeEnum'
         groups:
@@ -2107,6 +2211,14 @@ components:
       - id
       - password
       - username
+    UserStatusEnum:
+      enum:
+      - COMPLETE
+      - PENDING_EXTRA_DATA
+      type: string
+      description: |-
+        * `COMPLETE` - Complete
+        * `PENDING_EXTRA_DATA` - Pending Complete Data
     VerifyEmail:
       type: object
       properties:

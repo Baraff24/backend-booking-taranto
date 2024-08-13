@@ -10,7 +10,7 @@ from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     RentRoomAPI, AvailableRoomAPI, StripeWebhook,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
-                    DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI)
+                    DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI, RemoveAdminTypeUserAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -25,6 +25,7 @@ urlpatterns = [
     path("users/complete-profile/", CompleteProfileAPI.as_view(),
          name="complete-profile"),
     path("users/add-admin/", AddAdminTypeUserAPI.as_view(), name="add-admin"),
+    path("users/remove-admin/", RemoveAdminTypeUserAPI.as_view(), name="remove-admin"),
     path('google-calendar/init/', GoogleCalendarInitAPI.as_view(), name='google-calendar-init'),
     path('google-calendar/redirect/', GoogleCalendarRedirectAPI.as_view(), name='google-calendar-redirect'),
     path('structure/create-structure/', CreateStructureAPI.as_view(), name='create-structure'),
