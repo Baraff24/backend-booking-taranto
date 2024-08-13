@@ -930,7 +930,7 @@ class CancelReservationAPI(APIView):
 
             try:
                 # Retrieve the reservation
-                reservation = Reservation.objects.get(id=reservation_id)
+                reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
 
                 if not reservation.payment_intent_id:
                     return Response({'error': 'No payment intent found for this reservation.'},
