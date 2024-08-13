@@ -73,7 +73,13 @@ class Reservation(models.Model):
     """
     Model that represents the reservation.
     """
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reservations')
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='reservations'
+    )
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='reservations')
     reservation_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     check_in = models.DateField()

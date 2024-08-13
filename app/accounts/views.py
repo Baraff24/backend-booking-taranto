@@ -395,6 +395,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
     @method_decorator(is_active)
+    def create(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @method_decorator(is_active)
     @method_decorator(is_admin)
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
