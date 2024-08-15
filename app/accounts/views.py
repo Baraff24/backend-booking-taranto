@@ -175,7 +175,7 @@ class AddAdminTypeUserAPI(APIView):
         an existing user can be made an admin type user
         """
         user = request.user
-        if user.is_superuser:
+        if user.is_superuser or user.type == ADMIN:
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 user = User.objects.get(email=serializer.validated_data['email'])
@@ -201,7 +201,7 @@ class RemoveAdminTypeUserAPI(APIView):
         an existing admin user can be made a customer type user
         """
         user = request.user
-        if user.is_superuser:
+        if user.is_superuser or user.type == ADMIN:
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 user = User.objects.get(email=serializer.validated_data['email'])
