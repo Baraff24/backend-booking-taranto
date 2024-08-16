@@ -740,8 +740,8 @@ class AvailableRoomsForDatesAPI(APIView):
                 busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
                 busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
 
-                is_available = all(
-                    check_in + timedelta(days=i) not in busy_dates for i in range((check_out - check_in).days + 1)
+                is_available = not any(
+                    check_in <= busy_date <= check_out for busy_date in busy_dates
                 )
 
                 if is_available:
