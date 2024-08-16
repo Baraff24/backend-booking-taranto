@@ -503,6 +503,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/AvailableRoomsForDates'
           description: ''
+  /api/v1/accounts/room/create-room/:
+    post:
+      operationId: accounts_room_create_room_create
+      description: Create a room and associated Google Calendar
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Room'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Room'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Room'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+          description: ''
   /api/v1/accounts/room/rent-room/:
     post:
       operationId: accounts_room_rent_room_create
@@ -1775,6 +1804,10 @@ components:
           minimum: -2147483648
         structure:
           type: integer
+        calendar_id:
+          type: string
+          nullable: true
+          maxLength: 255
     PatchedStructureRoom:
       type: object
       description: Serializer for the Structure model
@@ -1957,6 +1990,10 @@ components:
           minimum: -2147483648
         structure:
           type: integer
+        calendar_id:
+          type: string
+          nullable: true
+          maxLength: 255
       required:
       - cost_per_night
       - id
