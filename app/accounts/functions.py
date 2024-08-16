@@ -228,7 +228,9 @@ def get_google_calendar_service():
         service = build('calendar', 'v3', credentials=credentials)
         return service
     except GoogleOAuthCredentials.DoesNotExist:
-        return None
+        raise Exception("Google Calendar credentials not found.")
+    except Exception as e:
+        raise Exception(f"Failed to create Google Calendar service: {str(e)}")
 
 
 def get_busy_dates_from_reservations(room, check_in, check_out):

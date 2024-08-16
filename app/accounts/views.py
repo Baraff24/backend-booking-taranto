@@ -725,25 +725,30 @@ class AvailableRoomsForDatesAPI(APIView):
             max_people = int(number_of_people)
         except ValueError:
             return Response({
-                'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'},
-                status=status.HTTP_400_BAD_REQUEST)
-
-        service = get_google_calendar_service()
-        if not service:
-            return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+                'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         available_rooms = []
         all_rooms = Room.objects.filter(max_people__gte=max_people)
 
         for room in all_rooms:
-            busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
-            busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
+            try:
+                service = get_google_calendar_service()
+                if not service:
+                    continue  # Skip this room if the calendar service is unavailable
 
-            is_available = all(
-                check_in + timedelta(days=i) not in busy_dates for i in range((check_out - check_in).days + 1))
+                busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
+                busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
 
-            if is_available:
-                available_rooms.append(self.serializer_class(room).data)
+                is_available = all(
+                    check_in + timedelta(days=i) not in busy_dates for i in range((check_out - check_in).days + 1)
+                )
+
+                if is_available:
+                    available_rooms.append(self.serializer_class(room).data)
+            except Exception as e:
+                print(f'Error checking availability for room {room.name}: {str(e)}')
+                continue
 
         return Response(available_rooms, status=status.HTTP_200_OK)
 
@@ -770,31 +775,35 @@ class AvailableRoomAPI(APIView):
         if not room:
             return Response({'error': 'Room does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
-        service = get_google_calendar_service()
-        if not service:
-            return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            service = get_google_calendar_service()
+            if not service:
+                return Response({'error': 'Google Calendar service unavailable for this room.'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
-        busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
+            busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
+            busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
 
-        available_dates = []
-        unavailable_dates = []
-        current_date = check_in.date()
-        while current_date <= check_out.date():
-            if current_date.strftime('%Y-%m-%d') not in busy_dates:
-                available_dates.append(current_date.strftime('%Y-%m-%d'))
-            else:
-                unavailable_dates.append(current_date.strftime('%Y-%m-%d'))
-            current_date += timedelta(days=1)
+            available_dates = []
+            unavailable_dates = []
+            current_date = check_in.date()
+            while current_date <= check_out.date():
+                if current_date.strftime('%Y-%m-%d') not in busy_dates:
+                    available_dates.append(current_date.strftime('%Y-%m-%d'))
+                else:
+                    unavailable_dates.append(current_date.strftime('%Y-%m-%d'))
+                current_date += timedelta(days=1)
 
-        room_data = self.serializer_class({
-            'structure': room.structure,
-            'room': room,
-            'available_dates': available_dates,
-            'unavailable_dates': unavailable_dates
-        }).data
+            room_data = self.serializer_class({
+                'structure': room.structure,
+                'room': room,
+                'available_dates': available_dates,
+                'unavailable_dates': unavailable_dates
+            }).data
 
-        return Response(room_data, status=status.HTTP_200_OK)
+            return Response(room_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RentRoomAPI(APIView):
@@ -829,18 +838,13 @@ class RentRoomAPI(APIView):
 
             # Check if the room is available on Google Calendar
             try:
-                creds = GoogleOAuthCredentials.objects.get(id=1)
-                credentials = Credentials(
-                    token=creds.token,
-                    refresh_token=creds.refresh_token,
-                    token_uri=creds.token_uri,
-                    client_id=creds.client_id,
-                    client_secret=creds.client_secret,
-                    scopes=creds.scopes.split()
-                )
-                service = build('calendar', 'v3', credentials=credentials)
+                service = get_google_calendar_service()
+                if not service:
+                    return Response({'error': 'Google Calendar service unavailable.'},
+                                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
                 events_result = service.events().list(
-                    calendarId='primary',
+                    calendarId=room.calendar_id,
                     timeMin=check_in.isoformat() + 'Z',
                     timeMax=check_out.isoformat() + 'Z',
                     singleEvents=True,
@@ -852,8 +856,8 @@ class RentRoomAPI(APIView):
                     return Response({
                         'error': 'Room is not available for the selected dates due to existing Google Calendar events.'},
                         status=status.HTTP_400_BAD_REQUEST)
-            except GoogleOAuthCredentials.DoesNotExist:
-                return Response({'error': 'Google Calendar credentials not found.'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             # If the room is available, create the reservation
             reservation = Reservation(**serializer.validated_data)
@@ -864,7 +868,6 @@ class RentRoomAPI(APIView):
             reservation.save()
 
             # Create the event on Google Calendar
-            # Move this code to function after the payment is successful
             event = {
                 'summary': f"Reservation for {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}",
                 'description': (
@@ -885,17 +888,16 @@ class RentRoomAPI(APIView):
                 'location': reservation.room.structure.address,
                 'attendees': [
                     {'email': reservation.email_on_reservation},
-                    # You can add more attendees if needed
                 ],
                 'reminders': {
                     'useDefault': False,
                     'overrides': [
-                        {'method': 'email', 'minutes': 24 * 60},  # 1 day before
+                        {'method': 'email', 'minutes': 24 * 60},
                         {'method': 'popup', 'minutes': 10},
                     ],
                 },
             }
-            service.events().insert(calendarId='primary', body=event).execute()
+            service.events().insert(calendarId=room.calendar_id, body=event).execute()
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
