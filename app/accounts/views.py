@@ -7,6 +7,7 @@ import stripe
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.db.models import Case, When, Value, IntegerField
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -23,7 +24,8 @@ import requests
 from lxml import etree
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
-    handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, get_busy_dates_from_calendar
+    handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
+    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
@@ -168,6 +170,7 @@ class AddAdminTypeUserAPI(APIView):
     serializer_class = EmailSerializer
 
     @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request):
         """
         Add an admin type user
@@ -194,6 +197,7 @@ class RemoveAdminTypeUserAPI(APIView):
     serializer_class = EmailSerializer
 
     @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request):
         """
         Remove an admin type user
@@ -220,6 +224,7 @@ class CreateStructureAPI(APIView):
     serializer_class = StructureSerializer
 
     @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request):
         """
         Create a structure
@@ -279,6 +284,7 @@ class AddStructureImageAPI(APIView):
             return None
 
     @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request, pk):
         """
         Add an image to a structure
@@ -319,6 +325,7 @@ class DeleteStructureImageAPI(APIView):
             return None
 
     @method_decorator(is_active)
+    @method_decorator(is_admin)
     def delete(self, request, pk):
         """
         Delete an image from a structure
@@ -363,6 +370,68 @@ class StructureViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+class CreateRoomAPI(APIView):
+    """
+    API to create a room and associated Google Calendar
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = RoomSerializer
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    @transaction.atomic
+    def post(self, request):
+        """
+        Create a room and associated Google Calendar
+        """
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            try:
+                room = serializer.save()
+                # Create a Google Calendar for the new room
+                calendar_id = self.create_google_calendar(room)
+                # Save the calendar ID to the room
+                room.calendar_id = calendar_id
+                room.save()
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                transaction.set_rollback(True)
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def create_google_calendar(room):
+        """
+        Create a Google Calendar for a specific room
+        """
+        try:
+            creds = GoogleOAuthCredentials.objects.get(id=1)
+            credentials = Credentials(
+                token=creds.token,
+                refresh_token=creds.refresh_token,
+                token_uri=creds.token_uri,
+                client_id=creds.client_id,
+                client_secret=creds.client_secret,
+                scopes=creds.scopes.split()
+            )
+            service = build('calendar', 'v3', credentials=credentials)
+
+            calendar = {
+                'summary': f'{room.name} Calendar',
+                'description': f'Calendar for room {room.name}',
+                'timeZone': 'UTC'
+            }
+
+            created_calendar = service.calendars().insert(body=calendar).execute()
+            return created_calendar['id']
+
+        except GoogleOAuthCredentials.DoesNotExist:
+            raise Exception('Google Calendar credentials not found.')
+        except Exception as e:
+            raise Exception(f'Failed to create Google Calendar: {str(e)}')
+
+
 class RoomViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing room instances.
@@ -379,11 +448,6 @@ class RoomViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
-
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
 
     @method_decorator(is_active)
     @method_decorator(is_admin)
@@ -422,6 +486,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
     @method_decorator(is_active)
+    @method_decorator(is_admin)
     def create(self, request, *args, **kwargs):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -650,8 +715,8 @@ class AvailableRoomsForDatesAPI(APIView):
             max_people = int(number_of_people)
         except ValueError:
             return Response({
-                                'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'},
+                status=status.HTTP_400_BAD_REQUEST)
 
         service = get_google_calendar_service()
         if not service:
@@ -925,37 +990,44 @@ class CancelReservationAPI(APIView):
         """
         serializer = self.serializer_class(data=request.data)
 
-        if serializer.is_valid():
-            reservation_id = serializer.validated_data['reservation_id']
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                # Retrieve the reservation
-                reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
+        reservation_id = serializer.validated_data['reservation_id']
 
-                if not reservation.payment_intent_id:
-                    return Response({'error': 'No payment intent found for this reservation.'},
-                                    status=status.HTTP_400_BAD_REQUEST)
+        try:
+            reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
 
-                # Process the refund using Stripe
-                refund = stripe.Refund.create(
-                    payment_intent=reservation.payment_intent_id,
-                )
+            if not reservation.payment_intent_id:
+                return Response({'error': 'No payment intent found for this reservation.'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-                # Update the reservation status
-                reservation.status = CANCELED
-                reservation.save()
+            # If the difference between the check-in date and the current date
+            # is less than 4 days, a refund is not possible
+            if (reservation.check_in - datetime.now(timezone.utc)).days < 4:
+                # Update reservation status and remove event from Google Calendar
+                cancel_reservation_and_remove_event(reservation)
 
-                return Response({
-                    'message': 'Reservation canceled and refund processed successfully.',
-                    'refund_id': refund.id
-                }, status=status.HTTP_200_OK)
+                return Response({'error': 'A refund is not possible for this reservation,'
+                                          'however the reservation has been canceled successfully.'},
+                                status=status.HTTP_200_OK)
 
-            except stripe.error.StripeError as e:
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Process the refund using Stripe
+            refund = process_stripe_refund(reservation)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            cancel_reservation_and_remove_event(reservation)
+
+            return Response({
+                'message': 'Reservation canceled and refund processed successfully.',
+                'refund_id': refund.id
+            }, status=status.HTTP_200_OK)
+
+        except Reservation.DoesNotExist:
+            return Response({'error': 'Reservation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except stripe.error.StripeError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GenerateXmlAndSendToDmsAPI(APIView):

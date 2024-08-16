@@ -5,6 +5,8 @@ from datetime import timedelta
 
 import django.contrib.auth
 from functools import wraps
+
+import stripe
 from decouple import config
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -106,27 +108,64 @@ def handle_refund_succeeded(refund):
     """
     Function to handle the refund succeeded
     """
-    # Get the reservation and set the paid field to False
     try:
         reservation = Reservation.objects.get(payment_intent=refund)
 
-        try:
-            # Send an email to the user to confirm the refund
-            subject = 'Conferma di rimborso per la tua prenotazione'
-            html_message = render_to_string('account/stripe/refund_confirmation_email.html',
-                                            {'reservation': reservation})
-            plain_message = strip_tags(html_message)
-            from_email = EMAIL
-            to_email = reservation.user.email
+        # Update reservation status to reflect refund
+        reservation.status = 'refunded'
+        reservation.save()
 
-            send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+        # Send a confirmation email to the user
+        send_refund_confirmation_email(reservation)
 
-            return Response({'status': 'success'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'status': 'success'}, status=status.HTTP_200_OK)
     except Reservation.DoesNotExist:
-        return Response({"Error": "Reservation not found"},
-                        status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Reservation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+def send_refund_confirmation_email(reservation):
+    """
+    Send a refund confirmation email to the user
+    """
+    subject = 'Conferma di rimborso per la tua prenotazione'
+    html_message = render_to_string('account/stripe/refund_confirmation_email.html', {'reservation': reservation})
+    plain_message = strip_tags(html_message)
+    from_email = EMAIL
+    to_email = reservation.user.email
+
+    send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+
+
+def process_stripe_refund(reservation):
+    """
+    Process a refund using Stripe
+    """
+    return stripe.Refund.create(payment_intent=reservation.payment_intent_id)
+
+
+def cancel_reservation_and_remove_event(reservation):
+    """
+    Cancel the reservation and remove the corresponding event from Google Calendar
+    """
+    reservation.status = 'canceled'
+    reservation.save()
+
+    try:
+        creds = GoogleOAuthCredentials.objects.get(id=1)
+        credentials = Credentials(
+            token=creds.token,
+            refresh_token=creds.refresh_token,
+            token_uri=creds.token_uri,
+            client_id=creds.client_id,
+            client_secret=creds.client_secret,
+            scopes=creds.scopes.split()
+        )
+        service = build('calendar', 'v3', credentials=credentials)
+        service.events().delete(calendarId='primary', eventId=reservation.google_calendar_event_id).execute()
+    except GoogleOAuthCredentials.DoesNotExist:
+        raise Exception('Google Calendar credentials not found.')
+    except Exception as e:
+        raise Exception(f"Failed to remove event from Google Calendar: {str(e)}")
 
 
 def calculate_total_cost(reservation):

@@ -10,7 +10,8 @@ from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     RentRoomAPI, AvailableRoomAPI, StripeWebhook,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
-                    DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI, RemoveAdminTypeUserAPI)
+                    DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI,
+                    RemoveAdminTypeUserAPI, CreateRoomAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -32,6 +33,7 @@ urlpatterns = [
     path('structures/<int:pk>/images/', GetStructureImagesAPI.as_view(), name='structure-images-list'),  # GET
     path('structures/<int:pk>/images/add/', AddStructureImageAPI.as_view(), name='add-structure-image'),  # POST
     path('structures/images/<int:pk>/delete/', DeleteStructureImageAPI.as_view(), name='delete-structure-image'),
+    path('room/create-room/', CreateRoomAPI.as_view(), name='create-room'),
     path('room/rent-room/', RentRoomAPI.as_view(), name='rent-room'),
     path('room/available-rooms-for-dates/', AvailableRoomsForDatesAPI.as_view(), name='available-rooms-for-dates'),
     path('room/available-room/', AvailableRoomAPI.as_view(), name='available-rooms'),
