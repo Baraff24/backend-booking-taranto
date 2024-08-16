@@ -64,6 +64,7 @@ class Room(models.Model):
     services = models.TextField(blank=True)
     cost_per_night = models.DecimalField(max_digits=10, decimal_places=2)
     max_people = models.IntegerField()
+    calendar_id = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return str(self.name)
