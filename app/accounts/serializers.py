@@ -141,16 +141,19 @@ class ReservationSerializer(serializers.ModelSerializer):
     Serializer for the Reservation model
     """
     user = UserSerializer(read_only=True)
+    room_id = serializers.IntegerField(write_only=True)
     room = RoomSerializer(read_only=True)
     discount = DiscountSerializer(read_only=True)
 
     class Meta:
         model = Reservation
-        fields = ['id', 'check_in', 'check_out', 'number_of_people', 'discount',
-                  'first_name_on_reservation', 'last_name_on_reservation',
-                  'email_on_reservation', 'phone_on_reservation', 'coupon_used',
-                  'user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id',
-                  'status', 'created_at']
+        fields = [
+            'id', 'check_in', 'check_out', 'number_of_people', 'discount',
+            'first_name_on_reservation', 'last_name_on_reservation',
+            'email_on_reservation', 'phone_on_reservation', 'coupon_used',
+            'user', 'room', 'room_id', 'total_cost', 'reservation_id',
+            'payment_intent_id', 'status', 'created_at'
+        ]
         read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'status', 'created_at']
 
     def validate(self, data):
@@ -159,9 +162,20 @@ class ReservationSerializer(serializers.ModelSerializer):
         """
         if data['check_in'] >= data['check_out']:
             raise serializers.ValidationError("Check-in date must be before check-out date.")
-        if data['number_of_people'] > data['room'].max_people:
+
+        # Validate room existence
+        try:
+            room = Room.objects.get(id=data['room_id'])
+        except Room.DoesNotExist:
+            raise serializers.ValidationError("Room does not exist.")
+
+        if data['number_of_people'] > room.max_people:
             raise serializers.ValidationError(
-                "Number of people must be less than or equal to the maximum number of people allowed in the room.")
+                "Number of people must be less than or equal to the maximum number of people allowed in the room."
+            )
+
+        # Attach the room to the data for further use
+        data['room'] = room
         return data
 
 

@@ -825,8 +825,9 @@ class RentRoomAPI(APIView):
         """
         user = request.user
         serializer = self.serializer_class(data=request.data)
+
         if serializer.is_valid():
-            room = serializer.validated_data['room']
+            room = serializer.validated_data['room']  # Room is already validated and attached in the serializer
             check_in = serializer.validated_data['check_in']
             check_out = serializer.validated_data['check_out']
 
