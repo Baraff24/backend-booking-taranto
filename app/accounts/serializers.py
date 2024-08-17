@@ -169,10 +169,17 @@ class ReservationSerializer(serializers.ModelSerializer):
         except Room.DoesNotExist:
             raise serializers.ValidationError("Room does not exist.")
 
+        # Validate the number of people
         if data['number_of_people'] > room.max_people:
             raise serializers.ValidationError(
                 "Number of people must be less than or equal to the maximum number of people allowed in the room."
             )
+
+        # Validate the maximum length of stay
+        max_nights = 30
+        num_nights = (data['check_out'] - data['check_in']).days
+        if num_nights > max_nights:
+            raise serializers.ValidationError(f"The maximum stay is {max_nights} nights.")
 
         # Attach the room to the data for further use
         data['room'] = room
