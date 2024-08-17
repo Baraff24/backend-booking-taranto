@@ -1,3 +1,4 @@
+from celery.schedules import crontab
 from decouple import config
 from .base import *
 
@@ -15,8 +16,9 @@ CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://redis:6379/0')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 
 CELERY_BEAT_SCHEDULE = {
-    'delete_expired_reservations': {
-        'task': 'app.tasks.delete_expired_reservations',
-        'schedule': 300.0,
-    },
+    # 'example_task': {
+    #     'task': 'app.tasks.example_task',
+    #     # Activate example_task every month on the 1st day at 2:00 AM
+    #     'schedule': crontab(minute='0', hour='2', day_of_month='1'),
+    # },
 }

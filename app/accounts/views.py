@@ -3,12 +3,26 @@ This module contains the views of the accounts app.
 """
 import os
 
+import pytz
 import stripe
-from datetime import datetime, timedelta, timezone
+import xml.etree.ElementTree as ET
+import requests
+from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
+from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
+    handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
+    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available
+from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
+from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
+                          RoomSerializer, ReservationSerializer, DiscountSerializer,
+                          CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
+                          StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
+                          CancelReservationSerializer)
+from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.db.models import Case, When, Value, IntegerField
+from django.db.models import Case, When, Value, IntegerField, Q
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
@@ -19,19 +33,7 @@ from rest_framework import status, filters, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-import xml.etree.ElementTree as ET
-import requests
 from lxml import etree
-from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER
-from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
-    handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
-    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event
-from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
-from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
-                          RoomSerializer, ReservationSerializer, DiscountSerializer,
-                          CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
-                          CancelReservationSerializer)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -726,42 +728,41 @@ class AvailableRoomsForDatesAPI(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
+            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
             max_people = int(number_of_people)
         except ValueError:
             return Response({
                 'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        available_rooms = []
-        all_rooms = Room.objects.filter(max_people__gte=max_people)
+        # Filter rooms available for the selected dates and number of people from the local database
+        current_time = timezone.now()
+        available_rooms = Room.objects.filter(
+            max_people__gte=max_people
+        ).exclude(
+            Q(reservations__check_in__lt=check_out, reservations__check_out__gt=check_in) &
+            (Q(reservations__status='PAID') |
+             Q(reservations__status='UNPAID', reservations__created_at__gte=current_time - timedelta(minutes=15)))
+        ).select_related('structure').distinct()
 
-        for room in all_rooms:
+        final_available_rooms = []
+
+        # Check availability for each room with Google Calendar and return only the available ones
+        for room in available_rooms:
             try:
-                service = get_google_calendar_service()
-                if not service:
-                    continue  # Skip this room if the calendar service is unavailable
 
                 busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
-                busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
 
-                # Convert check_in and check_out to date objects for comparison
-                check_in_date = check_in.date()
-                check_out_date = check_out.date()
-
-                is_available = not any(
-                    check_in_date <= datetime.strptime(busy_date, '%Y-%m-%d').date() <= check_out_date
-                    for busy_date in busy_dates
-                )
+                is_available = is_room_available(busy_dates, check_in, check_out)
 
                 if is_available:
-                    available_rooms.append(self.serializer_class(room).data)
+                    final_available_rooms.append(self.serializer_class(room).data)
             except Exception as e:
                 print(f'Error checking availability for room {room.name}: {str(e)}')
-                continue
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(available_rooms, status=status.HTTP_200_OK)
+        return Response(final_available_rooms, status=status.HTTP_200_OK)
 
 
 class AvailableRoomAPI(APIView):
@@ -777,12 +778,12 @@ class AvailableRoomAPI(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
+            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
         except ValueError:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        room = Room.objects.filter(id=room_id).first()
+        room = Room.objects.select_related('structure').filter(id=room_id).first()
         if not room:
             return Response({'error': 'Room does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -879,38 +880,6 @@ class RentRoomAPI(APIView):
             calculate_total_cost(reservation)
             reservation.save()
 
-            # Create the event on Google Calendar
-            event = {
-                'summary': f"Reservation for {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}",
-                'description': (
-                    f"Email: {reservation.email_on_reservation}\n"
-                    f"Phone: {reservation.phone_on_reservation}\n"
-                    f"Total Cost: {reservation.total_cost}\n"
-                    f"Number of People: {reservation.number_of_people}\n"
-                    f"Room: {reservation.room.name}, {reservation.room.structure}"
-                ),
-                'start': {
-                    'dateTime': reservation.check_in.isoformat() + 'T00:00:00Z',
-                    'timeZone': 'UTC',
-                },
-                'end': {
-                    'dateTime': reservation.check_out.isoformat() + 'T00:00:00Z',
-                    'timeZone': 'UTC',
-                },
-                'location': reservation.room.structure.address,
-                'attendees': [
-                    {'email': reservation.email_on_reservation},
-                ],
-                'reminders': {
-                    'useDefault': False,
-                    'overrides': [
-                        {'method': 'email', 'minutes': 24 * 60},
-                        {'method': 'popup', 'minutes': 10},
-                    ],
-                },
-            }
-            service.events().insert(calendarId=room.calendar_id, body=event).execute()
-
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -979,6 +948,17 @@ class CreateCheckoutSessionLinkAPI(APIView):
             ]
 
             try:
+
+                # Get the reservation and lock it for payment
+                reservation = Reservation.objects.select_for_update().get(id=data['reservation'])
+
+                # Check if the reservation is already in a state that disallows payment
+                # (e.g. already paid or canceled or it passed 10 minutes since the reservation was made)
+                time_elapsed = timezone.now() - reservation.created_at
+                if reservation.status in [PAID, CANCELED] or time_elapsed > timedelta(minutes=10):
+                    return Response({'error': 'This reservation cannot be processed for payment.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
                 # Create a new Checkout Session for the order
                 session = stripe.checkout.Session.create(
                     payment_method_types=['card'],
@@ -989,7 +969,6 @@ class CreateCheckoutSessionLinkAPI(APIView):
                 )
 
                 # Add the payment intent id to the reservation
-                reservation = Reservation.objects.get(id=data['reservation'])
                 reservation.payment_intent_id = session.payment_intent
                 reservation.save()
 
@@ -1029,7 +1008,7 @@ class CancelReservationAPI(APIView):
 
             # If the difference between the check-in date and the current date
             # is less than 4 days, a refund is not possible
-            if (reservation.check_in - datetime.now(timezone.utc)).days < 4:
+            if (reservation.check_in - datetime.now()).days < 4:
                 # Update reservation status and remove event from Google Calendar
                 cancel_reservation_and_remove_event(reservation)
 

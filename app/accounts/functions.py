@@ -1,7 +1,7 @@
 """
 This file contains all the functions and decorators used in the accounts app.
 """
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import django.contrib.auth
 from functools import wraps
@@ -9,7 +9,9 @@ from functools import wraps
 import stripe
 from decouple import config
 from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
 from rest_framework import status
@@ -19,7 +21,7 @@ from googleapiclient.discovery import build
 
 from allauth.account.models import EmailAddress
 
-from accounts.constants import COMPLETE, ADMIN
+from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID
 from accounts.models import Reservation, Discount, GoogleOAuthCredentials
 
 User = django.contrib.auth.get_user_model()
@@ -79,29 +81,35 @@ def handle_payment_intent_succeeded(payment_intent):
     """
     Function to handle the payment intent succeeded
     """
-    # Get the reservation and set the paid field to True
+    reservation = get_object_or_404(Reservation, payment_intent_id=payment_intent['id'])
+
+    # Add the reservation to Google Calendar
+    service = get_google_calendar_service()
+    add_reservation_to_google_calendar(service, reservation)
+
+    # Update reservation status to PAID
+    reservation.status = PAID
+    reservation.save()
+
+    # Send payment confirmation email
+    send_payment_confirmation_email(reservation)
+
+
+def send_payment_confirmation_email(reservation):
+    """
+    Send a payment confirmation email to the user
+    """
     try:
-        reservation = Reservation.objects.get(payment_intent=payment_intent)
-        reservation.payed = True
-        reservation.save()
+        subject = 'Conferma di pagamento per la tua prenotazione'
+        html_message = render_to_string('account/stripe/payment_confirmation_email.html',
+                                        {'reservation': reservation})
+        plain_message = strip_tags(html_message)
+        from_email = EMAIL
+        to_email = reservation.user.email
 
-        try:
-            # Send an email to the user to confirm the payment
-            subject = 'Conferma di pagamento per la tua prenotazione'
-            html_message = render_to_string('account/stripe/payment_confirmation_email.html',
-                                            {'reservation': reservation})
-            plain_message = strip_tags(html_message)
-            from_email = EMAIL
-            to_email = reservation.user.email
-
-            send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
-
-            return Response({'status': 'success'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    except Reservation.DoesNotExist:
-        return Response({"Error": "Reservation not found"},
-                        status=status.HTTP_404_NOT_FOUND)
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+    except Exception as e:
+        print(f"Failed to send payment confirmation email: {str(e)}")
 
 
 def handle_refund_succeeded(refund):
@@ -233,25 +241,99 @@ def get_google_calendar_service():
         raise Exception(f"Failed to create Google Calendar service: {str(e)}")
 
 
+def add_reservation_to_google_calendar(service, reservation):
+    try:
+        event = {
+            'summary': f"Reservation for {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}",
+            'description': (
+                f"Email: {reservation.email_on_reservation}\n"
+                f"Phone: {reservation.phone_on_reservation}\n"
+                f"Total Cost: {reservation.total_cost}\n"
+                f"Number of People: {reservation.number_of_people}\n"
+                f"Room: {reservation.room.name}, {reservation.room.structure}"
+            ),
+            'start': {
+                'dateTime': reservation.check_in.isoformat() + 'T00:00:00Z',
+                'timeZone': 'UTC',
+            },
+            'end': {
+                'dateTime': reservation.check_out.isoformat() + 'T00:00:00Z',
+                'timeZone': 'UTC',
+            },
+            'location': reservation.room.structure.address,
+            'attendees': [
+                {'email': reservation.email_on_reservation},
+            ],
+            'reminders': {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'email', 'minutes': 24 * 60},
+                    {'method': 'popup', 'minutes': 10},
+                ],
+            },
+        }
+        service.events().insert(calendarId=reservation.room.calendar_id, body=event).execute()
+        return event
+    except Exception as e:
+        raise Exception(f"Failed to add reservation to Google Calendar: {str(e)}")
+
+
 def get_busy_dates_from_reservations(room, check_in, check_out):
     busy_dates = set()
+    current_time = timezone.now()
+
+    # Filter reservations, excluding unpaid reservations that are older than 15 minutes
     local_reservations = Reservation.objects.filter(
         room=room,
         check_out__gte=check_in,
         check_in__lte=check_out
+    ).exclude(
+        status=UNPAID,
+        created_at__lt=(current_time - timedelta(minutes=15))
     )
+
+    # Collect busy dates from valid reservations
     for reservation in local_reservations:
         current_date = reservation.check_in
         while current_date <= reservation.check_out:
             busy_dates.add(current_date.strftime('%Y-%m-%d'))
             current_date += timedelta(days=1)
+
     return busy_dates
+
+
+def get_combined_busy_dates(room, check_in, check_out):
+    """
+    Get the combined busy dates from reservations and Google Calendar events
+    """
+    # Obtaining the dates occupied by reservations
+    busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
+
+    # Obtaining the dates occupied by Google Calendar events
+    service = get_google_calendar_service()
+    if service:
+        busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
+
+    return busy_dates
+
+
+def is_room_available(busy_dates, check_in, check_out):
+    """
+    Check if a room is available given a set of busy dates.
+    """
+    check_in_date = check_in.date()
+    check_out_date = check_out.date()
+
+    return not any(
+        check_in_date <= datetime.strptime(busy_date, '%Y-%m-%d').date() <= check_out_date
+        for busy_date in busy_dates
+    )
 
 
 def get_busy_dates_from_calendar(service, room, check_in, check_out):
     busy_dates = set()
     events_result = service.events().list(
-        calendarId='primary',
+        calendarId=room.calendar_id,
         timeMin=check_in.isoformat(),
         timeMax=check_out.isoformat(),
         singleEvents=True,

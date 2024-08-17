@@ -152,10 +152,9 @@ class ReservationSerializer(serializers.ModelSerializer):
             'first_name_on_reservation', 'last_name_on_reservation',
             'email_on_reservation', 'phone_on_reservation', 'coupon_used',
             'user', 'room', 'room_id', 'total_cost', 'reservation_id',
-            'payment_intent_id', 'status', 'created_at', 'expires_at'
+            'payment_intent_id', 'status', 'created_at'
         ]
-        read_only_fields = ['user', 'room', 'total_cost', 'reservation_id',
-                            'payment_intent_id', 'status', 'created_at', 'expires_at']
+        read_only_fields = ['user', 'room', 'total_cost', 'reservation_id', 'payment_intent_id', 'status', 'created_at']
 
     def validate(self, data):
         """
