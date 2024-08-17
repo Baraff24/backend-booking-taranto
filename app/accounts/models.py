@@ -2,9 +2,11 @@
 This module contains the models for the accounts app.
 """
 import uuid
+from datetime import timedelta
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 from .constants import (STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES,
                         CUSTOMER, ROOM_STATUS, AVAILABLE, STATUS_RESERVATION, UNPAID)
@@ -95,6 +97,12 @@ class Reservation(models.Model):
     email_on_reservation = models.EmailField()
     coupon_used = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(minutes=15)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return str({f"{self.user} - {self.room}"})

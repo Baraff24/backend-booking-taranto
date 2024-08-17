@@ -487,6 +487,12 @@ class ReservationViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name_on_reservation', 'last_name_on_reservation', 'email_on_reservation']
     ordering_fields = ['check_in', 'check_out', 'total_cost']
 
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.type == ADMIN:
+            return Reservation.objects.all()  # Superuser/admin can see all reservations
+        return Reservation.objects.filter(user=user)  # Regular user can see only their own reservations
+
     @method_decorator(is_active)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
@@ -985,6 +991,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                 # Add the payment intent id to the reservation
                 reservation = Reservation.objects.get(id=data['reservation'])
                 reservation.payment_intent_id = session.payment_intent
+                reservation.save()
 
                 return Response({'id': session.id}, status=status.HTTP_200_OK)
 
