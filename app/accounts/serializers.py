@@ -229,7 +229,7 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
     @staticmethod
     def validate_reservation_id(value):
         try:
-            reservation = Reservation.objects.get(id=value)
+            Reservation.objects.get(id=value)
         except Reservation.DoesNotExist:
             raise serializers.ValidationError("Reservation does not exist.")
         return value

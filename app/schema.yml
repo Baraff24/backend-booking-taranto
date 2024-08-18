@@ -1558,16 +1558,11 @@ components:
     CreateCheckoutSession:
       type: object
       properties:
-        room:
-          type: integer
-        reservation:
-          type: integer
-        number_of_people:
-          type: integer
+        reservation_id:
+          type: string
+          format: uuid
       required:
-      - number_of_people
-      - reservation
-      - room
+      - reservation_id
     Discount:
       type: object
       description: Serializer for the Discount model
@@ -1759,6 +1754,9 @@ components:
           allOf:
           - $ref: '#/components/schemas/Room'
           readOnly: true
+        room_id:
+          type: integer
+          writeOnly: true
         total_cost:
           type: string
           format: decimal
@@ -1910,6 +1908,9 @@ components:
           allOf:
           - $ref: '#/components/schemas/Room'
           readOnly: true
+        room_id:
+          type: integer
+          writeOnly: true
         total_cost:
           type: string
           format: decimal
@@ -1945,6 +1946,7 @@ components:
       - phone_on_reservation
       - reservation_id
       - room
+      - room_id
       - status
       - total_cost
       - user
