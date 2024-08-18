@@ -218,6 +218,11 @@ class ReservationCalendarSerializer(serializers.ModelSerializer):
                   'email_on_reservation', 'phone_on_reservation', 'status', 'room']
 
 
+class CalculateDiscountSerializer(serializers.Serializer):
+    reservation = serializers.UUIDField(required=True)
+    discount_code = serializers.CharField(max_length=50, required=True)
+
+
 class CreateCheckoutSessionSerializer(serializers.Serializer):
     room = serializers.IntegerField()
     reservation = serializers.IntegerField()

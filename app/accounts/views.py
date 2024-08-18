@@ -16,7 +16,7 @@ from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSe
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
-                          CancelReservationSerializer)
+                          CancelReservationSerializer, CalculateDiscountSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -889,28 +889,37 @@ class CalculateDiscountAPI(APIView):
     API to calculate the discount for a reservation
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = CalculateDiscountSerializer
 
     @method_decorator(is_active)
     def post(self, request):
         """
         Calculate the discount for a reservation
         """
-        data = request.data
-        discount_code = data.get('discount_code')
-        reservation_id = data.get('reservation')
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            discount_code = serializer.validated_data['discount_code']
+            reservation_id = serializer.validated_data['reservation']
 
-        try:
-            reservation = Reservation.objects.get(id=reservation_id)
-            reservation.coupon_used = discount_code
-            calculate_total_cost(reservation)
-            discount_amount = calculate_discount(reservation)
-            reservation.save()
-            return Response({'total_cost': reservation.total_cost, 'discount_amount': discount_amount},
-                            status=status.HTTP_200_OK)
-        except Reservation.DoesNotExist:
-            return Response({'error': 'Reservation not found'}, status=status.HTTP_400_BAD_REQUEST)
-        except Discount.DoesNotExist:
-            return Response({'error': 'Discount code not found'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                reservation = Reservation.objects.get(id=reservation_id)
+                reservation.coupon_used = discount_code
+                calculate_total_cost(reservation)
+                discount_amount = calculate_discount(reservation)
+                reservation.save()
+
+                return Response({
+                    'total_cost': reservation.total_cost,
+                    'discount_amount': discount_amount
+                },
+                    status=status.HTTP_200_OK)
+            except Reservation.DoesNotExist:
+                return Response({'error': 'Reservation not found'}, status=status.HTTP_400_BAD_REQUEST)
+            except Discount.DoesNotExist:
+                return Response({'error': 'Discount code not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CreateCheckoutSessionLinkAPI(APIView):
