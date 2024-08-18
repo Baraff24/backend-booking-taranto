@@ -33,6 +33,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/CancelReservation'
           description: ''
+  /api/v1/accounts/discount/calculate-discount/:
+    post:
+      operationId: accounts_discount_calculate_discount_create
+      description: Calculate the discount for a reservation
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateDiscount'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalculateDiscount'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalculateDiscount'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculateDiscount'
+          description: ''
   /api/v1/accounts/discounts/:
     get:
       operationId: accounts_discounts_list
@@ -1025,6 +1054,7 @@ paths:
       - basicAuth: []
       - cookieAuth: []
       - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -1533,6 +1563,18 @@ components:
       - max_people
       - name
       - structure
+    CalculateDiscount:
+      type: object
+      properties:
+        reservation:
+          type: string
+          format: uuid
+        discount_code:
+          type: string
+          maxLength: 50
+      required:
+      - discount_code
+      - reservation
     CancelReservation:
       type: object
       properties:
