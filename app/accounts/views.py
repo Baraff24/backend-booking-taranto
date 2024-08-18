@@ -936,30 +936,33 @@ class CreateCheckoutSessionLinkAPI(APIView):
         """
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            data = serializer.validated_data
-            room = Room.objects.get(id=data['room'])
-            structure = room.structure
-            cost_per_night = room.cost_per_night
-            number_of_people = data['number_of_people']
-
-            line_items = [
-                {
-                    'price_data': {
-                        'currency': 'eur',
-                        'product_data': {
-                            'name': f'{room.name} at {structure.name}',
-                            'images': [f'https://example.com/{room.name}.jpg'],
-                        },
-                        'unit_amount': int(cost_per_night * 100),
-                    },
-                    'quantity': number_of_people,
-                },
-            ]
-
             try:
 
-                # Get the reservation and lock it for payment
-                reservation = Reservation.objects.select_for_update().get(id=data['reservation'])
+                # Get the reservation instance from the validated data
+                reservation = serializer.get_reservation()
+
+                # Retrieve room, structure, and number of people from the reservation
+                room = reservation.room
+                structure = room.structure
+                cost_per_night = room.cost_per_night
+                number_of_people = reservation.number_of_people
+
+                line_items = [
+                    {
+                        'price_data': {
+                            'currency': 'eur',
+                            'product_data': {
+                                'name': f'{room.name} at {structure.name}',
+                                'images': [f'https://example.com/{room.name}.jpg'],
+                            },
+                            'unit_amount': int(cost_per_night * 100),
+                        },
+                        'quantity': number_of_people,
+                    },
+                ]
+
+                # Lock the reservation for payment processing
+                reservation = Reservation.objects.select_for_update().get(id=reservation.id)
 
                 # Check if the reservation is already in a state that disallows payment
                 # (e.g. already paid or canceled or it passed 10 minutes since the reservation was made)
