@@ -11,7 +11,7 @@ from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
                     DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI,
-                    RemoveAdminTypeUserAPI, CreateRoomAPI)
+                    RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -37,6 +37,7 @@ urlpatterns = [
     path('room/rent-room/', RentRoomAPI.as_view(), name='rent-room'),
     path('room/available-rooms-for-dates/', AvailableRoomsForDatesAPI.as_view(), name='available-rooms-for-dates'),
     path('room/available-room/', AvailableRoomAPI.as_view(), name='available-rooms'),
+    path('discount/calculate-discount/', CalculateDiscountAPI.as_view(), name='calculate-discount'),
     path('stripe/create-checkout-session/', CreateCheckoutSessionLinkAPI.as_view(), name='create-checkout-session'),
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
     path('generate-xml-and-send-to-dms/', GenerateXmlAndSendToDmsAPI.as_view(), name='generate-xml-and-send-to-dms'),

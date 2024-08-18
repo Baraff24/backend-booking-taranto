@@ -242,7 +242,6 @@ class GetStructureImagesAPI(APIView):
     """
     API to get all images of a structure
     """
-    permission_classes = [IsAuthenticated]
     serializer_class = StructureImageSerializer
 
     @staticmethod
@@ -255,7 +254,6 @@ class GetStructureImagesAPI(APIView):
         except ObjectDoesNotExist:
             return None
 
-    @method_decorator(is_active)
     def get(self, request, pk):
         """
         Get all images of a structure
@@ -535,9 +533,13 @@ class DiscountViewSet(viewsets.ModelViewSet):
     search_fields = ['code', 'description']
     ordering_fields = ['code', 'discount', 'start_date', 'end_date']
 
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
