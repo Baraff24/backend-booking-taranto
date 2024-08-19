@@ -8,9 +8,10 @@ import stripe
 import xml.etree.ElementTree as ET
 import requests
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
-from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
+from .functions import is_active, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
-    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available
+    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available, \
+    handle_checkout_session_completed
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
@@ -705,9 +706,9 @@ class StripeWebhook(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Handle the event
-        if event['type'] == 'payment_intent.succeeded':
+        if event['type'] == 'checkout.session.completed':
             session = event['data']['object']
-            handle_payment_intent_succeeded(session)
+            handle_checkout_session_completed(session)
 
         if event['type'] == 'refund.succeeded':
             refund = event['data']['object']
@@ -960,7 +961,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     # Retrieve room, structure, and number of people from the reservation
                     room = reservation.room
                     structure = room.structure
-                    cost_per_night = room.cost_per_night
+                    total_cost = room.total_cost
 
                     # Check if structure has images and get the first one, otherwise use a placeholder
                     structure_image = structure.images.first()
@@ -978,7 +979,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                                     'name': f'{room.name} at {structure.name}',
                                     'images': [image_url],
                                 },
-                                'unit_amount': int(cost_per_night * 100),
+                                'unit_amount': int(total_cost * 100),
                             },
                             'quantity': 1,
                         },
