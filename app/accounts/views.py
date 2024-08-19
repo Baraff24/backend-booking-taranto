@@ -951,53 +951,52 @@ class CreateCheckoutSessionLinkAPI(APIView):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             try:
+                with transaction.atomic():
+                    # Get the reservation instance from the validated data
+                    reservation = serializer.get_reservation()
 
-                # Get the reservation instance from the validated data
-                reservation = serializer.get_reservation()
+                    # Lock the reservation for payment processing
+                    reservation = Reservation.objects.select_for_update().get(id=reservation.id)
 
-                # Retrieve room, structure, and number of people from the reservation
-                room = reservation.room
-                structure = room.structure
-                cost_per_night = room.cost_per_night
-                number_of_people = reservation.number_of_people
+                    # Retrieve room, structure, and number of people from the reservation
+                    room = reservation.room
+                    structure = room.structure
+                    cost_per_night = room.cost_per_night
+                    number_of_people = reservation.number_of_people
 
-                line_items = [
-                    {
-                        'price_data': {
-                            'currency': 'eur',
-                            'product_data': {
-                                'name': f'{room.name} at {structure.name}',
-                                'images': [f'https://example.com/{room.name}.jpg'],
+                    line_items = [
+                        {
+                            'price_data': {
+                                'currency': 'eur',
+                                'product_data': {
+                                    'name': f'{room.name} at {structure.name}',
+                                    'images': [f'https://example.com/{room.name}.jpg'],
+                                },
+                                'unit_amount': int(cost_per_night * 100),
                             },
-                            'unit_amount': int(cost_per_night * 100),
+                            'quantity': number_of_people,
                         },
-                        'quantity': number_of_people,
-                    },
-                ]
+                    ]
 
-                # Lock the reservation for payment processing
-                reservation = Reservation.objects.select_for_update().get(id=reservation.id)
+                    # Check if the reservation is already in a state that disallows payment
+                    # (e.g. already paid or canceled or it passed 10 minutes since the reservation was made)
+                    time_elapsed = timezone.now() - reservation.created_at
+                    if reservation.status in [PAID, CANCELED] or time_elapsed > timedelta(minutes=10):
+                        return Response({'error': 'This reservation cannot be processed for payment.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
 
-                # Check if the reservation is already in a state that disallows payment
-                # (e.g. already paid or canceled or it passed 10 minutes since the reservation was made)
-                time_elapsed = timezone.now() - reservation.created_at
-                if reservation.status in [PAID, CANCELED] or time_elapsed > timedelta(minutes=10):
-                    return Response({'error': 'This reservation cannot be processed for payment.'},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                    # Create a new Checkout Session for the order
+                    session = stripe.checkout.Session.create(
+                        payment_method_types=['card'],
+                        line_items=line_items,
+                        mode='payment',
+                        success_url='https://example.com/success',
+                        cancel_url='https://example.com/cancel',
+                    )
 
-                # Create a new Checkout Session for the order
-                session = stripe.checkout.Session.create(
-                    payment_method_types=['card'],
-                    line_items=line_items,
-                    mode='payment',
-                    success_url='https://example.com/success',
-                    cancel_url='https://example.com/cancel',
-                )
-
-                # Add the payment intent id to the reservation
-                reservation.payment_intent_id = session.payment_intent
-                reservation.save()
-
+                    # Add the payment intent id to the reservation
+                    reservation.payment_intent_id = session.payment_intent
+                    reservation.save()
                 return Response({'id': session.id}, status=status.HTTP_200_OK)
 
             except Exception as e:
