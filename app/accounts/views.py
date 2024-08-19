@@ -956,7 +956,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     reservation = serializer.get_reservation()
 
                     # Lock the reservation for payment processing
-                    reservation = Reservation.objects.select_for_update().get(id=reservation.id)
+                    reservation = Reservation.objects.select_for_update().get(reservation_id__exact=reservation.id)
 
                     # Retrieve room, structure, and number of people from the reservation
                     room = reservation.room
