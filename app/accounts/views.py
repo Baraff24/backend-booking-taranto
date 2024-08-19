@@ -746,7 +746,7 @@ class AvailableRoomsForDatesAPI(APIView):
         ).exclude(
             Q(reservations__check_in__lt=check_out, reservations__check_out__gt=check_in) &
             (Q(reservations__status='PAID') |
-             Q(reservations__status='UNPAID', reservations__created_at__gte=current_time - timedelta(minutes=15)))
+             Q(reservations__status='UNPAID', reservations__created_at__gte=current_time - timedelta(minutes=10)))
         ).select_related('structure').distinct()
 
         final_available_rooms = []
