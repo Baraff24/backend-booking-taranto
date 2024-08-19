@@ -951,12 +951,13 @@ class CreateCheckoutSessionLinkAPI(APIView):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             try:
-                with transaction.atomic():
-                    # Get the reservation instance from the validated data
-                    reservation = serializer.get_reservation()
 
+                # Get the reservation instance from the validated data
+                reservation = serializer.get_reservation()
+
+                with transaction.atomic():
                     # Lock the reservation for payment processing
-                    reservation = Reservation.objects.select_for_update().get(reservation_id__exact=reservation.id)
+                    reservation = Reservation.objects.select_for_update().get(id=reservation.id)
 
                     # Retrieve room, structure, and number of people from the reservation
                     room = reservation.room
