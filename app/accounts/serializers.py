@@ -111,11 +111,11 @@ class StructureRoomSerializer(serializers.ModelSerializer):
     Serializer for the Structure model
     """
     rooms = RoomSerializer(many=True, read_only=True)
-    structure_images = StructureImageSerializer(many=True, read_only=True)
+    images = StructureImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Structure
-        fields = ['id', 'name', 'description', 'address', 'cis', 'rooms', 'structure_images']
+        fields = ['id', 'name', 'description', 'address', 'cis', 'rooms', 'images']
 
 
 class AvailableRoomsForDatesSerializer(serializers.ModelSerializer):

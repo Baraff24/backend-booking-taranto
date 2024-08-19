@@ -342,7 +342,7 @@ class StructureViewSet(viewsets.ModelViewSet):
     A viewset for viewing and editing structure instances.
     """
     serializer_class = StructureRoomSerializer
-    queryset = Structure.objects.all()
+    queryset = Structure.objects.prefetch_related('structure_images', 'rooms').all()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['name', 'address']
     search_fields = ['name', 'address', 'description']
@@ -971,7 +971,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                                 'currency': 'eur',
                                 'product_data': {
                                     'name': f'{room.name} at {structure.name}',
-                                    'images': [f'https://example.com/{room.name}.jpg'],
+                                    'images': [f'{structure.images.first().image}'],
                                 },
                                 'unit_amount': int(cost_per_night * 100),
                             },
