@@ -248,7 +248,7 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
         """
         Helper method to return the reservation instance after validation.
         """
-        return Reservation.objects.get(id=self.validated_data['reservation_id'])
+        return Reservation.objects.get(reservation_id__exact=self.validated_data['reservation_id'])
 
 
 class SchedinaSerializer(serializers.Serializer):
