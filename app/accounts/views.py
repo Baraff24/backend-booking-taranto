@@ -996,7 +996,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     )
 
                     # Add the payment intent id to the reservation
-                    reservation.payment_intent_id = session.payment_intent
+                    reservation.payment_intent_id = "TEST_PAYMENT_INTENT_ID"
                     reservation.save()
                 return Response({'url': session.url}, status=status.HTTP_200_OK)
 
