@@ -16,6 +16,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
 from rest_framework import status
 from rest_framework.response import Response
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
