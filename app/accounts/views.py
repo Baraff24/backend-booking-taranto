@@ -411,16 +411,7 @@ class CreateRoomAPI(APIView):
         Create a Google Calendar for a specific room
         """
         try:
-            creds = GoogleOAuthCredentials.objects.get(id=1)
-            credentials = Credentials(
-                token=creds.token,
-                refresh_token=creds.refresh_token,
-                token_uri=creds.token_uri,
-                client_id=creds.client_id,
-                client_secret=creds.client_secret,
-                scopes=creds.scopes.split()
-            )
-            service = build('calendar', 'v3', credentials=credentials)
+            service = get_google_calendar_service()
 
             calendar = {
                 'summary': f'{room.name} Calendar',
@@ -429,6 +420,16 @@ class CreateRoomAPI(APIView):
             }
 
             created_calendar = service.calendars().insert(body=calendar).execute()
+
+            # Make the calendar public
+            rule = {
+                'role': 'reader',  # Public read-only access
+                'scope': {
+                    'type': 'default',  # Public
+                }
+            }
+            service.acl().insert(calendarId=created_calendar['id'], body=rule).execute()
+
             return created_calendar['id']
 
         except GoogleOAuthCredentials.DoesNotExist:

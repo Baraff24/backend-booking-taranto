@@ -80,8 +80,6 @@ AUTHENTICATION_BACKENDS = [
 WSGI_APPLICATION = 'core.wsgi.application'
 ASGI_APPLICATION = 'core.asgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
@@ -91,6 +89,13 @@ DATABASES = {
         'NAME': config('DB_NAME'),
         'USER': config('DB_USERNAME'),
         'PASSWORD': config('DB_PASSWORD'),
+    }
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': config('REDIS_BACKEND', default='redis://redis:6379/0'),
     }
 }
 
@@ -104,9 +109,6 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Custom auth user model
 AUTH_USER_MODEL = 'accounts.User'
-
-# Password validation
-# https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -153,8 +155,6 @@ EMAIL_USE_TLS = True
 
 SITE_ID = 2
 
-# Internationalization
-# https://docs.djangoproject.com/en/4.1/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
