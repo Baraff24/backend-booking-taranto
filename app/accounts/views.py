@@ -909,7 +909,7 @@ class CalculateDiscountAPI(APIView):
             reservation_id = serializer.validated_data['reservation']
 
             try:
-                reservation = Reservation.objects.get(id=reservation_id)
+                reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
                 reservation.coupon_used = discount_code
                 calculate_total_cost(reservation)
                 discount_amount = calculate_discount(reservation)
