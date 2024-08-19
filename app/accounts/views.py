@@ -342,7 +342,7 @@ class StructureViewSet(viewsets.ModelViewSet):
     A viewset for viewing and editing structure instances.
     """
     serializer_class = StructureRoomSerializer
-    queryset = Structure.objects.prefetch_related('structure_images', 'rooms').all()
+    queryset = Structure.objects.prefetch_related('rooms', 'images').all()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['name', 'address']
     search_fields = ['name', 'address', 'description']
