@@ -82,20 +82,27 @@ def handle_payment_intent_succeeded(session):
     """
     Function to handle the payment intent succeeded
     """
-    reservation = get_object_or_404(Reservation, payment_intent_id=session['id'])
+    try:
+        reservation = get_object_or_404(Reservation, payment_intent_id=session['id'])
 
-    reservation.payment_intent_id = session['payment_intent']
+        reservation.payment_intent_id = session['payment_intent']
 
-    # Add the reservation to Google Calendar
-    service = get_google_calendar_service()
-    add_reservation_to_google_calendar(service, reservation)
+        # Add the reservation to Google Calendar
+        service = get_google_calendar_service()
+        add_reservation_to_google_calendar(service, reservation)
 
-    # Update reservation status to PAID
-    reservation.status = PAID
-    reservation.save()
+        # Update reservation status to PAID
+        reservation.status = PAID
+        reservation.save()
 
-    # Send payment confirmation email
-    send_payment_confirmation_email(reservation)
+        # Send payment confirmation email
+        send_payment_confirmation_email(reservation)
+
+        return Response({'status': 'success'}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"Error in handle_payment_intent_succeeded: {e}")
+        return Response({'status': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def send_payment_confirmation_email(reservation):
