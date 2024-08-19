@@ -838,12 +838,12 @@ class RentRoomAPI(APIView):
 
         if serializer.is_valid():
             room = serializer.validated_data['room']  # Room is already validated and attached in the serializer
-            check_in = serializer.validated_data['check_in']
-            check_out = serializer.validated_data['check_out']
+            check_in_date = serializer.validated_data['check_in']
+            check_out_date = serializer.validated_data['check_out']
 
-            # Convert check_in and check_out to UTC if they are not
-            check_in = check_in.astimezone(pytz.UTC)
-            check_out = check_out.astimezone(pytz.UTC)
+            # Convert check_in and check_out to datetime with time 00:00 and then to UTC
+            check_in = datetime.combine(check_in_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+            check_out = datetime.combine(check_out_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
 
             # Check if the room is available in the local database
             conflicting_reservations = Reservation.objects.filter(
