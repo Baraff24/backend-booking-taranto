@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 import requests
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
 from .functions import is_active, is_admin, calculate_total_cost, calculate_discount, \
-    handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
+    handle_refund_created, get_google_calendar_service, get_busy_dates_from_reservations, \
     get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available, \
     handle_checkout_session_completed
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
@@ -710,9 +710,9 @@ class StripeWebhook(APIView):
             session = event['data']['object']
             handle_checkout_session_completed(session)
 
-        if event['type'] == 'refund.succeeded':
+        if event['type'] == 'refund.created':
             refund = event['data']['object']
-            handle_refund_succeeded(refund)
+            handle_refund_created(refund)
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
@@ -886,7 +886,8 @@ class RentRoomAPI(APIView):
             calculate_total_cost(reservation)
             reservation.save()
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # Return the updated serializer to show all the fields
+            return Response(self.serializer_class(reservation).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

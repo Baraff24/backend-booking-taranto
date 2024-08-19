@@ -1,3 +1,4 @@
+{% load reservation %}
 {% load i18n %}
 
 <!DOCTYPE html>
@@ -59,35 +60,35 @@
     </style>
 </head>
 <body>
-    <div class="email-container">
-        <div class="email-header">
-            <img src="https://cdn.pixabay.com/photo/2016/09/14/20/50/tooth-1670434_1280.png" alt="Logo Azienda">
-        </div>
-        <div class="email-body">
-            {% autoescape off %}
-            {% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
-            <h1>Grazie per il tuo pagamento!</h1>
-            <p>Gentile {{ reservation.user.first_name }},</p>
-            <p>Siamo lieti di confermare il pagamento per la tua prenotazione. Qui di seguito i dettagli:</p>
-            <ul>
-                <li><strong>Camera:</strong> {{ reservation.room.name }}</li>
-                <li><strong>Data di check-in:</strong> {{ reservation.check_in }}</li>
-                <li><strong>Data di check-out:</strong> {{ reservation.check_out }}</li>
-                <li><strong>Importo pagato:</strong> {{ reservation.total_cost }} €</li>
-            </ul>
-            <p>Grazie per aver scelto il nostro servizio.</p>
-            <p>Cordiali saluti,</p>
-            <p>Il team dell'hotel</p>
-            {% endblocktrans %}
-            {% endautoescape %}
-        </div>
-        <div class="email-footer">
-            <p>Se hai domande, non esitare a contattarci.</p>
-            <p>Hotel XYZ, Via Roma 123, 00100 Roma, Italia</p>
-            <p>Telefono: +39 06 1234 5678</p>
-            <p>Email: info@hotelxyz.it</p>
-            <p>&copy; {{ current_year }} {{ current_site.name }}. Tutti i diritti riservati.</p>
-        </div>
+<div class="email-container">
+    <div class="email-header">
+        <img src="https://cdn.pixabay.com/photo/2016/09/14/20/50/tooth-1670434_1280.png" alt="Logo Azienda">
     </div>
+    <div class="email-body">
+        {% autoescape off %}
+        {% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
+        <h1>Grazie per il tuo pagamento!</h1>
+        <p>Gentile {{ reservation.user.first_name }},</p>
+        <p>Siamo lieti di confermare il pagamento per la tua prenotazione. Qui di seguito i dettagli:</p>
+        <ul>
+            <li><strong>Camera:</strong> {{ reservation.room.name }}</li>
+            <li><strong>Data di check-in:</strong> {{ reservation.check_in }}</li>
+            <li><strong>Data di check-out:</strong> {{ reservation.check_out }}</li>
+            <li><strong>Importo pagato:</strong> {{ reservation.total_cost }} €</li>
+        </ul>
+        <p>Grazie per aver scelto il nostro servizio.</p>
+        <p>Cordiali saluti,</p>
+        <p>Il team dell'hotel</p>
+        {% endblocktrans %}
+        {% endautoescape %}
+    </div>
+    <div class="email-footer">
+        <p>Se hai domande, non esitare a contattarci.</p>
+        <p>Hotel XYZ, Via Roma 123, 00100 Roma, Italia</p>
+        <p>Telefono: +39 06 1234 5678</p>
+        <p>Email: info@hotelxyz.it</p>
+        <p>&copy; {{ current_year }} {{ current_site.name }}. Tutti i diritti riservati.</p>
+    </div>
+</div>
 </body>
 </html>

@@ -83,18 +83,11 @@ def handle_checkout_session_completed(session):
     Function to handle checkout session completed event from Stripe
     """
     try:
-        print(session)
         # Retrieve the payment intent ID from the session
         session_id = session['id']
 
         # Find the corresponding reservation
         reservation = get_object_or_404(Reservation, payment_intent_id=session_id)
-
-        print(session_id)
-        print(session['payment_intent'])
-        print("Reservation found")
-
-
 
         # Update the payment intent ID in the reservation
         reservation.payment_intent_id = session['payment_intent']
@@ -106,14 +99,11 @@ def handle_checkout_session_completed(session):
         # Optionally, send a confirmation email or update Google Calendar, etc.
         send_payment_confirmation_email(reservation)
 
-        print("Payment completed successfully")
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
     except Reservation.DoesNotExist:
-        print("Reservation not found")
         return Response({"error": "Reservation not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        print(f"Error in handle_checkout_session_completed: {e}")
         return Response({'status': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -161,7 +151,7 @@ def send_payment_confirmation_email(reservation):
         print(f"Failed to send payment confirmation email: {str(e)}")
 
 
-def handle_refund_succeeded(refund):
+def handle_refund_created(refund):
     """
     Function to handle the refund succeeded
     """
