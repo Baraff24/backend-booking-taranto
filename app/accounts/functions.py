@@ -83,13 +83,18 @@ def handle_checkout_session_completed(session):
     Function to handle checkout session completed event from Stripe
     """
     try:
+        print(session)
         # Retrieve the payment intent ID from the session
         session_id = session['id']
 
         # Find the corresponding reservation
         reservation = get_object_or_404(Reservation, payment_intent_id=session_id)
 
+        print(session_id)
+        print(session['payment_intent'])
         print("Reservation found")
+
+
 
         # Update the payment intent ID in the reservation
         reservation.payment_intent_id = session['payment_intent']
