@@ -233,6 +233,11 @@ def get_google_calendar_service():
             client_secret=creds.client_secret,
             scopes=creds.scopes.split()
         )
+
+        # Refresh the token if it's expired
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+
         service = build('calendar', 'v3', credentials=credentials)
         return service
     except GoogleOAuthCredentials.DoesNotExist:
