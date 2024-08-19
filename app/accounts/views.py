@@ -965,13 +965,18 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     cost_per_night = room.cost_per_night
                     number_of_people = reservation.number_of_people
 
+                    # Check if structure has images and get the first one, otherwise use a placeholder
+                    structure_image = structure.images.first()
+                    image_url = structure_image.image if structure_image else "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGc1Uuv3qbLCHlOkYv-4xnHf61Fkzvg9xgBQ&s"
+
+                    # Define line_items according to Stripe's best practices
                     line_items = [
                         {
                             'price_data': {
                                 'currency': 'eur',
                                 'product_data': {
                                     'name': f'{room.name} at {structure.name}',
-                                    'images': [f'{structure.images.first().image}'],
+                                    'images': [image_url],
                                 },
                                 'unit_amount': int(cost_per_night * 100),
                             },
@@ -996,7 +1001,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     )
 
                     # Add the payment intent id to the reservation
-                    reservation.payment_intent_id = "TEST_PAYMENT_INTENT_ID"
+                    reservation.payment_intent_id = session.payment_intent.id
                     reservation.save()
                 return Response({'url': session.url}, status=status.HTTP_200_OK)
 
