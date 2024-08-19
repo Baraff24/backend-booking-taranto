@@ -961,7 +961,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     # Retrieve room, structure, and number of people from the reservation
                     room = reservation.room
                     structure = room.structure
-                    total_cost = room.total_cost
+                    total_cost = reservation.total_cost
 
                     # Check if structure has images and get the first one, otherwise use a placeholder
                     structure_image = structure.images.first()

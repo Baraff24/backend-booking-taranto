@@ -84,10 +84,10 @@ def handle_checkout_session_completed(session):
     """
     try:
         # Retrieve the payment intent ID from the session
-        id = session['id']
+        session_id = session['id']
 
         # Find the corresponding reservation
-        reservation = get_object_or_404(Reservation, payment_intent_id=id)
+        reservation = get_object_or_404(Reservation, payment_intent_id=session_id)
 
         # Update the payment intent ID in the reservation
         reservation.payment_intent_id = session['payment_intent']
