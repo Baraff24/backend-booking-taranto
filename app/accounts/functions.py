@@ -89,6 +89,8 @@ def handle_checkout_session_completed(session):
         # Find the corresponding reservation
         reservation = get_object_or_404(Reservation, payment_intent_id=session_id)
 
+        print("Reservation found")
+
         # Update the payment intent ID in the reservation
         reservation.payment_intent_id = session['payment_intent']
 
@@ -99,11 +101,14 @@ def handle_checkout_session_completed(session):
         # Optionally, send a confirmation email or update Google Calendar, etc.
         send_payment_confirmation_email(reservation)
 
+        print("Payment completed successfully")
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
     except Reservation.DoesNotExist:
+        print("Reservation not found")
         return Response({"error": "Reservation not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print(f"Error in handle_checkout_session_completed: {e}")
         return Response({'status': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
