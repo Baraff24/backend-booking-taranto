@@ -10,7 +10,8 @@ import requests
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
-    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available
+    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available, \
+    update_payment_intent_id
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
@@ -963,11 +964,13 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     room = reservation.room
                     structure = room.structure
                     cost_per_night = room.cost_per_night
-                    number_of_people = reservation.number_of_people
 
                     # Check if structure has images and get the first one, otherwise use a placeholder
                     structure_image = structure.images.first()
-                    image_url = structure_image.image if structure_image else "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGc1Uuv3qbLCHlOkYv-4xnHf61Fkzvg9xgBQ&s"
+                    if structure_image:
+                        image_url = request.build_absolute_uri(structure_image.image.url)
+                    else:
+                        image_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGc1Uuv3qbLCHlOkYv-4xnHf61Fkzvg9xgBQ&s"
 
                     # Define line_items according to Stripe's best practices
                     line_items = [
@@ -980,7 +983,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                                 },
                                 'unit_amount': int(cost_per_night * 100),
                             },
-                            'quantity': number_of_people,
+                            'quantity': 1,
                         },
                     ]
 
@@ -1000,9 +1003,13 @@ class CreateCheckoutSessionLinkAPI(APIView):
                         cancel_url='http://localhost:5173/booking/payment-failed',
                     )
 
-                    # Add the payment intent id to the reservation
-                    reservation.payment_intent_id = session.payment_intent.id
+                    # Add the session ID to the reservation temporarily
+                    reservation.payment_intent_id = session.id
                     reservation.save()
+
+                # After saving the reservation, update with the actual payment intent
+                update_payment_intent_id(session.id)
+
                 return Response({'url': session.url}, status=status.HTTP_200_OK)
 
             except Exception as e:

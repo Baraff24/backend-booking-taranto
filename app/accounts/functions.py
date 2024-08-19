@@ -96,6 +96,24 @@ def handle_payment_intent_succeeded(payment_intent):
     send_payment_confirmation_email(reservation)
 
 
+def update_payment_intent_id(session_id):
+    try:
+        # Obtain the session from Stripe with the session_id
+        session = stripe.checkout.Session.retrieve(session_id)
+
+        # Obtain the payment_intent_id from the session
+        payment_intent_id = session.get('payment_intent')
+
+        if payment_intent_id:
+            # Update the payment_intent_id in the reservation
+            Reservation.objects.filter(payment_intent_id=session_id).update(payment_intent_id=payment_intent_id)
+        else:
+            raise Exception("Payment Intent ID not found in the session.")
+
+    except Exception as e:
+        print(f"Error updating payment_intent_id: {str(e)}")
+
+
 def send_payment_confirmation_email(reservation):
     """
     Send a payment confirmation email to the user
