@@ -10,8 +10,7 @@ import requests
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
 from .functions import is_active, handle_payment_intent_succeeded, is_admin, calculate_total_cost, calculate_discount, \
     handle_refund_succeeded, get_google_calendar_service, get_busy_dates_from_reservations, \
-    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available, \
-    update_payment_intent_id
+    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
