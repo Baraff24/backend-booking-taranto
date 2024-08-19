@@ -1,6 +1,7 @@
 """
 Serializers for the accounts app.
 """
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -234,21 +235,13 @@ class CalculateDiscountSerializer(serializers.Serializer):
 
 
 class CreateCheckoutSessionSerializer(serializers.Serializer):
-    reservation_id = serializers.UUIDField()
-
-    @staticmethod
-    def validate_reservation_id(value):
-        try:
-            Reservation.objects.get(id=value)
-        except Reservation.DoesNotExist:
-            raise serializers.ValidationError("Reservation does not exist.")
-        return value
+    reservation_id = serializers.UUIDField(required=True)
 
     def get_reservation(self):
         """
         Helper method to return the reservation instance after validation.
         """
-        return Reservation.objects.get(reservation_id__exact=self.validated_data['reservation_id'])
+        return get_object_or_404(Reservation, reservation_id__exact=self.validated_data['reservation_id'])
 
 
 class SchedinaSerializer(serializers.Serializer):
