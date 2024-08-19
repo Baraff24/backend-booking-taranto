@@ -709,8 +709,8 @@ class StripeWebhook(APIView):
 
         # Handle the event
         if event['type'] == 'payment_intent.succeeded':
-            payment_intent = event['data']['object']
-            handle_payment_intent_succeeded(payment_intent)
+            session = event['data']['object']
+            handle_payment_intent_succeeded(session)
 
         if event['type'] == 'refund.succeeded':
             refund = event['data']['object']
@@ -1006,9 +1006,6 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     # Add the session ID to the reservation temporarily
                     reservation.payment_intent_id = session.id
                     reservation.save()
-
-                # After saving the reservation, update with the actual payment intent
-                update_payment_intent_id(session.id)
 
                 return Response({'url': session.url}, status=status.HTTP_200_OK)
 

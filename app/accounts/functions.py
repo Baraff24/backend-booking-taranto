@@ -78,11 +78,13 @@ def is_admin(view_func):
 #####################################################################################
 # FUNCTIONS #
 #####################################################################################
-def handle_payment_intent_succeeded(payment_intent):
+def handle_payment_intent_succeeded(session):
     """
     Function to handle the payment intent succeeded
     """
-    reservation = get_object_or_404(Reservation, payment_intent_id=payment_intent['id'])
+    reservation = get_object_or_404(Reservation, payment_intent_id=session['id'])
+
+    reservation.payment_intent_id = session['payment_intent']
 
     # Add the reservation to Google Calendar
     service = get_google_calendar_service()
@@ -94,24 +96,6 @@ def handle_payment_intent_succeeded(payment_intent):
 
     # Send payment confirmation email
     send_payment_confirmation_email(reservation)
-
-
-def update_payment_intent_id(session_id):
-    try:
-        # Obtain the session from Stripe with the session_id
-        session = stripe.checkout.Session.retrieve(session_id)
-
-        # Obtain the payment_intent_id from the session
-        payment_intent_id = session.get('payment_intent')
-
-        if payment_intent_id:
-            # Update the payment_intent_id in the reservation
-            Reservation.objects.filter(payment_intent_id=session_id).update(payment_intent_id=payment_intent_id)
-        else:
-            raise Exception("Payment Intent ID not found in the session.")
-
-    except Exception as e:
-        print(f"Error updating payment_intent_id: {str(e)}")
 
 
 def send_payment_confirmation_email(reservation):
