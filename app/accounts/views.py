@@ -991,14 +991,14 @@ class CreateCheckoutSessionLinkAPI(APIView):
                         payment_method_types=['card'],
                         line_items=line_items,
                         mode='payment',
-                        success_url='https://example.com/success',
-                        cancel_url='https://example.com/cancel',
+                        success_url='https://sitename.com/checkout-success',
+                        cancel_url='https://sitename.com/checkout-cancel',
                     )
 
                     # Add the payment intent id to the reservation
                     reservation.payment_intent_id = session.payment_intent
                     reservation.save()
-                return Response({'id': session.id}, status=status.HTTP_200_OK)
+                return Response({'url': session.url}, status=status.HTTP_200_OK)
 
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
