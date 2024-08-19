@@ -841,6 +841,10 @@ class RentRoomAPI(APIView):
             check_in = serializer.validated_data['check_in']
             check_out = serializer.validated_data['check_out']
 
+            # Convert check_in and check_out to UTC if they are not
+            check_in = check_in.astimezone(pytz.UTC)
+            check_out = check_out.astimezone(pytz.UTC)
+
             # Check if the room is available in the local database
             conflicting_reservations = Reservation.objects.filter(
                 room=room,
@@ -861,8 +865,8 @@ class RentRoomAPI(APIView):
 
                 events_result = service.events().list(
                     calendarId=room.calendar_id,
-                    timeMin=check_in.isoformat() + 'Z',
-                    timeMax=check_out.isoformat() + 'Z',
+                    timeMin=check_in.isoformat(),
+                    timeMax=check_out.isoformat(),
                     singleEvents=True,
                     orderBy='startTime'
                 ).execute()

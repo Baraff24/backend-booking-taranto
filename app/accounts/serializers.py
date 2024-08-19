@@ -93,6 +93,7 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = ['id', 'name', 'room_status', 'services',
                   'cost_per_night', 'max_people', 'structure', 'calendar_id']
+        read_only_fields = ['id', 'calendar_id']
 
 
 class StructureRoomSerializer(serializers.ModelSerializer):
