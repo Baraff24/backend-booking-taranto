@@ -916,10 +916,9 @@ class CalculateDiscountAPI(APIView):
                 reservation.save()
 
                 return Response({
-                    'total_cost': reservation.total_cost,
-                    'discount_amount': discount_amount
-                },
-                    status=status.HTTP_200_OK)
+                    'total_cost': str(reservation.total_cost),
+                    'discount_amount': str(discount_amount)
+                }, status=status.HTTP_200_OK)
             except Reservation.DoesNotExist:
                 return Response({'error': 'Reservation not found'}, status=status.HTTP_400_BAD_REQUEST)
             except Discount.DoesNotExist:
