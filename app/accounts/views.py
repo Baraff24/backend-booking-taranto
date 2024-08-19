@@ -991,8 +991,8 @@ class CreateCheckoutSessionLinkAPI(APIView):
                         payment_method_types=['card'],
                         line_items=line_items,
                         mode='payment',
-                        success_url='https://sitename.com/checkout-success',
-                        cancel_url='https://sitename.com/checkout-cancel',
+                        success_url='http://localhost:5173/booking/payment-success',
+                        cancel_url='http://localhost:5173/booking/payment-failed',
                     )
 
                     # Add the payment intent id to the reservation
