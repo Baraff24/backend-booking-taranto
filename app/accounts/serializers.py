@@ -95,6 +95,15 @@ class RoomSerializer(serializers.ModelSerializer):
                   'cost_per_night', 'max_people', 'structure', 'calendar_id']
         read_only_fields = ['id', 'calendar_id']
 
+    @staticmethod
+    def validate_cost_per_night(value):
+        """
+        Ensure that the cost_per_night is greater than 0.
+        """
+        if value <= 0:
+            raise serializers.ValidationError("Cost per night must be greater than 0.")
+        return value
+
 
 class StructureRoomSerializer(serializers.ModelSerializer):
     """

@@ -215,12 +215,11 @@ def calculate_discount(reservation):
                 # Apply the discount
                 reservation.total_cost -= discount_amount
                 reservation.save()
-                return Response({'Discount applied': discount_amount}, status=status.HTTP_200_OK)
-        return Response({"Error": "Discount not valid for the reservation dates"},
-                        status=status.HTTP_400_BAD_REQUEST)
+                return discount_amount
+
+        return None
     except Discount.DoesNotExist:
-        return Response({"Error": "Discount not found"},
-                        status=status.HTTP_404_NOT_FOUND)
+        return None
 
 
 def get_google_calendar_service():

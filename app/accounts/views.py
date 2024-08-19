@@ -910,15 +910,23 @@ class CalculateDiscountAPI(APIView):
 
             try:
                 reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
-                reservation.coupon_used = discount_code
-                calculate_total_cost(reservation)
-                discount_amount = calculate_discount(reservation)
-                reservation.save()
 
-                return Response({
-                    'total_cost': str(reservation.total_cost),
-                    'discount_amount': str(discount_amount)
-                }, status=status.HTTP_200_OK)
+                if reservation.status == PAID:
+                    return Response({'error': 'This reservation has already been paid.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                reservation.coupon_used = discount_code
+                reservation.save()
+                discount_amount = calculate_discount(reservation)
+
+                if discount_amount is not None:
+                    return Response({
+                        'total_cost': str(reservation.total_cost),
+                        'discount_amount': str(discount_amount)
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'Discount not valid or not applicable for the reservation dates'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
             except Reservation.DoesNotExist:
                 return Response({'error': 'Reservation not found'}, status=status.HTTP_400_BAD_REQUEST)
             except Discount.DoesNotExist:
