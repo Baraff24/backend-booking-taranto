@@ -11,7 +11,8 @@ from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
                     DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI,
-                    RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI)
+                    RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI, GetRoomImagesAPI, AddRoomImageAPI,
+                    DeleteRoomImageAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -33,6 +34,9 @@ urlpatterns = [
     path('structures/<int:pk>/images/', GetStructureImagesAPI.as_view(), name='structure-images-list'),  # GET
     path('structures/<int:pk>/images/add/', AddStructureImageAPI.as_view(), name='add-structure-image'),  # POST
     path('structures/images/<int:pk>/delete/', DeleteStructureImageAPI.as_view(), name='delete-structure-image'),
+    path('rooms/<int:pk>/images/', GetRoomImagesAPI.as_view(), name='get-room-images'),
+    path('rooms/<int:pk>/images/add/', AddRoomImageAPI.as_view(), name='add-room-image'),
+    path('rooms/images/<int:pk>/delete/', DeleteRoomImageAPI.as_view(), name='delete-room-image'),
     path('room/create-room/', CreateRoomAPI.as_view(), name='create-room'),
     path('room/rent-room/', RentRoomAPI.as_view(), name='rent-room'),
     path('room/available-rooms-for-dates/', AvailableRoomsForDatesAPI.as_view(), name='available-rooms-for-dates'),

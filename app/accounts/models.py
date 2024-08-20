@@ -72,6 +72,18 @@ class Room(models.Model):
         return str(self.name)
 
 
+class RoomImage(models.Model):
+    """
+    Model that represents the image of the structure.
+    """
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='room_images/')
+    alt = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return str(self.room)
+
+
 class Reservation(models.Model):
     """
     Model that represents the reservation.

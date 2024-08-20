@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .constants import CANCELED
-from .models import User, Structure, Room, Reservation, Discount, StructureImage
+from .models import User, Structure, Room, Reservation, Discount, StructureImage, RoomImage
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -85,15 +85,34 @@ class StructureSerializer(serializers.ModelSerializer):
         return instance
 
 
+class RoomImageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the StructureImage model
+    """
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RoomImage
+        fields = ['id', 'image', 'alt', 'room']
+
+    def get_image(self, obj):
+        request = self.context.get('request', None)
+        image_url = obj.image.url
+        if request:
+            return request.build_absolute_uri(image_url)
+        return image_url
+
+
 class RoomSerializer(serializers.ModelSerializer):
     """
     Serializer for the Room model
     """
+    images = RoomImageSerializer(many=True, required=False)
 
     class Meta:
         model = Room
         fields = ['id', 'name', 'room_status', 'services',
-                  'cost_per_night', 'max_people', 'structure', 'calendar_id']
+                  'cost_per_night', 'max_people', 'structure', 'calendar_id', 'images']
         read_only_fields = ['id', 'calendar_id']
 
     @staticmethod

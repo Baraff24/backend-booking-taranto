@@ -12,12 +12,12 @@ from .functions import is_active, is_admin, calculate_total_cost, calculate_disc
     handle_refund_created, get_google_calendar_service, get_busy_dates_from_reservations, \
     get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available, \
     handle_checkout_session_completed
-from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage
+from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
-                          CancelReservationSerializer, CalculateDiscountSerializer)
+                          CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -435,6 +435,105 @@ class CreateRoomAPI(APIView):
             raise Exception('Google Calendar credentials not found.')
         except Exception as e:
             raise Exception(f'Failed to create Google Calendar: {str(e)}')
+
+
+class GetRoomImagesAPI(APIView):
+    """
+    API to get all images of a room
+    """
+    serializer_class = RoomImageSerializer
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the room object by primary key
+        """
+        try:
+            return Room.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        """
+        Get all images of a room
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        images = obj.images.all()
+        serializer = self.serializer_class(images, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AddRoomImageAPI(APIView):
+    """
+    API to add an image to a room
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = RoomImageSerializer
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the room object by primary key
+        """
+        try:
+            return Room.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def post(self, request, pk):
+        """
+        Add an image to a room
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response({"detail": "Room not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        images = request.FILES.getlist('images')
+        if not images:
+            return Response({"detail": "No images provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        room_images = [RoomImage(room=obj, image=image) for image in images]
+
+        try:
+            RoomImage.objects.bulk_create(room_images)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(room_images, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class DeleteRoomImageAPI(APIView):
+    """
+    API to delete an image from a room
+    """
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the room image object by primary key
+        """
+        try:
+            return RoomImage.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
+    def delete(self, request, pk):
+        """
+        Delete an image from a room
+        """
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_200_OK)
 
 
 class RoomViewSet(viewsets.ModelViewSet):
@@ -912,7 +1011,8 @@ class CalculateDiscountAPI(APIView):
                 reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
 
                 if reservation.status == PAID:
-                    return Response({'error': 'This reservation has already been paid.'}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({'error': 'This reservation has already been paid.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
                 reservation.coupon_used = discount_code
                 reservation.save()
