@@ -25,6 +25,7 @@ from allauth.account.models import EmailAddress
 
 from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
 from accounts.models import Reservation, Discount, GoogleOAuthCredentials
+from accounts.serializers import ReservationSerializer
 
 User = django.contrib.auth.get_user_model()
 EMAIL = config('EMAIL_HOST_USER', '')
@@ -144,10 +145,18 @@ def send_payment_confirmation_email(reservation):
     Send a payment confirmation email to the user
     """
     try:
+        serializer = ReservationSerializer(reservation)
+        reservation_data = serializer.data
+
+        context = {
+            'reservation': reservation_data,
+            'current_site': current_site,
+            'current_year': timezone.now().year,
+            # 'logo_url': request.build_absolute_uri('/static/img/logo.png')
+        }
+
         subject = 'Conferma di pagamento per la tua prenotazione'
-        html_message = get_template('account/stripe/payment_confirmation_email.html').render({
-            'reservation': reservation.get_serialized_data()
-        })
+        html_message = get_template('account/stripe/payment_confirmation_email.html').render(context)
         plain_message = strip_tags(html_message)
         from_email = EMAIL
         to_email = reservation.user.email
