@@ -150,7 +150,6 @@ def send_payment_confirmation_email(reservation):
 
         context = {
             'reservation': reservation_data,
-            'current_site': current_site,
             'current_year': timezone.now().year,
             # 'logo_url': request.build_absolute_uri('/static/img/logo.png')
         }
