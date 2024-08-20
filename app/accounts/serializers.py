@@ -2,7 +2,6 @@
 Serializers for the accounts app.
 """
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import serializers
 
 from .constants import CANCELED
@@ -11,7 +10,7 @@ from .models import User, Structure, Room, Reservation, Discount, StructureImage
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer for the User model
+    Serializer for the User model.
     """
 
     class Meta:
@@ -21,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class CompleteProfileSerializer(serializers.ModelSerializer):
     """
-    Serializer for the User model to complete profile
+    Serializer for completing a user's profile.
     """
 
     class Meta:
@@ -31,14 +30,14 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
 
 class EmailSerializer(serializers.Serializer):
     """
-    Serializer for the email field
+    Serializer for the email field.
     """
     email = serializers.EmailField()
 
 
 class StructureImageSerializer(serializers.ModelSerializer):
     """
-    Serializer for the StructureImage model
+    Serializer for the StructureImage model.
     """
     image = serializers.SerializerMethodField()
 
@@ -56,7 +55,7 @@ class StructureImageSerializer(serializers.ModelSerializer):
 
 class StructureSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Structure model
+    Serializer for the Structure model.
     """
     images = StructureImageSerializer(many=True, required=False)
 
@@ -67,27 +66,27 @@ class StructureSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         images_data = validated_data.pop('images', [])
         structure = Structure.objects.create(**validated_data)
-        for image_data in images_data:
-            StructureImage.objects.create(structure=structure, **image_data)
+        StructureImage.objects.bulk_create(
+            [StructureImage(structure=structure, **image_data) for image_data in images_data]
+        )
         return structure
 
     def update(self, instance, validated_data):
         images_data = validated_data.pop('images', [])
-        instance.name = validated_data.get('name', instance.name)
-        instance.description = validated_data.get('description', instance.description)
-        instance.address = validated_data.get('address', instance.address)
-        instance.cis = validated_data.get('cis', instance.cis)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
 
-        for image_data in images_data:
-            StructureImage.objects.update_or_create(structure=instance, **image_data)
-
+        StructureImage.objects.filter(structure=instance).delete()  # Pulisci le immagini esistenti
+        StructureImage.objects.bulk_create(
+            [StructureImage(structure=instance, **image_data) for image_data in images_data]
+        )
         return instance
 
 
 class RoomImageSerializer(serializers.ModelSerializer):
     """
-    Serializer for the StructureImage model
+    Serializer for the StructureImage model.
     """
     image = serializers.SerializerMethodField()
 
@@ -105,7 +104,7 @@ class RoomImageSerializer(serializers.ModelSerializer):
 
 class RoomSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Room model
+    Serializer for the Room model.
     """
     images = RoomImageSerializer(many=True, required=False)
 
@@ -127,7 +126,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
 class StructureRoomSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Structure model
+    Serializer for the Structure model with associated rooms.
     """
     rooms = RoomSerializer(many=True, read_only=True)
     images = StructureImageSerializer(many=True, read_only=True)
@@ -139,7 +138,7 @@ class StructureRoomSerializer(serializers.ModelSerializer):
 
 class AvailableRoomsForDatesSerializer(serializers.ModelSerializer):
     """
-    Serializer for the AvailableRoomForDates API
+    Serializer for rooms available for specific dates.
     """
     structure = StructureSerializer(read_only=True)
 
@@ -150,7 +149,7 @@ class AvailableRoomsForDatesSerializer(serializers.ModelSerializer):
 
 class DiscountSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Discount model
+    Serializer for the Discount model.
     """
 
     class Meta:
@@ -168,7 +167,7 @@ class DiscountSerializer(serializers.ModelSerializer):
 
 class ReservationSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Reservation model
+    Serializer for the Reservation model.
     """
     user = UserSerializer(read_only=True)
     room_id = serializers.IntegerField(write_only=True)
@@ -194,10 +193,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Check-in date must be before check-out date.")
 
         # Validate room existence
-        try:
-            room = Room.objects.get(id=data['room_id'])
-        except Room.DoesNotExist:
-            raise serializers.ValidationError("Room does not exist.")
+        room = get_object_or_404(Room, id=data['room_id'])
 
         # Validate the number of people
         if data['number_of_people'] > room.max_people:
@@ -217,6 +213,9 @@ class ReservationSerializer(serializers.ModelSerializer):
 
 
 class CancelReservationSerializer(serializers.Serializer):
+    """
+    Serializer for canceling a reservation.
+    """
     reservation_id = serializers.UUIDField(required=True)
 
     @staticmethod
@@ -224,10 +223,8 @@ class CancelReservationSerializer(serializers.Serializer):
         """
         Verify that the reservation exists and has not been canceled
         """
-        try:
-            reservation = Reservation.objects.get(reservation_id__exact=value)
-        except Reservation.DoesNotExist:
-            raise serializers.ValidationError("Reservation not found.")
+
+        reservation = get_object_or_404(Reservation, reservation_id__exact=value)
 
         if reservation.status == CANCELED:
             raise serializers.ValidationError("This reservation has already been canceled.")
@@ -237,7 +234,7 @@ class CancelReservationSerializer(serializers.Serializer):
 
 class ReservationCalendarSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Reservation model for the calendar
+    Serializer for displaying reservation details in a calendar.
     """
     room = RoomSerializer(read_only=True)
 
@@ -249,11 +246,17 @@ class ReservationCalendarSerializer(serializers.ModelSerializer):
 
 
 class CalculateDiscountSerializer(serializers.Serializer):
+    """
+    Serializer for calculating the discount for a reservation.
+    """
     reservation = serializers.UUIDField(required=True)
     discount_code = serializers.CharField(max_length=50, required=True)
 
 
 class CreateCheckoutSessionSerializer(serializers.Serializer):
+    """
+    Serializer for creating a Stripe checkout session.
+    """
     reservation_id = serializers.UUIDField(required=True)
 
     def get_reservation(self):
@@ -264,6 +267,9 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
 
 
 class SchedinaSerializer(serializers.Serializer):
+    """
+    Serializer for handling individual guest registration forms (Schedina).
+    """
     tipo_alloggiati = serializers.CharField(max_length=2)
     data_arrivo = serializers.DateField(input_formats=['%d/%m/%Y'])
     numero_giorni_permanenza = serializers.IntegerField(min_value=1, max_value=30)
@@ -282,6 +288,9 @@ class SchedinaSerializer(serializers.Serializer):
 
 
 class GenerateXmlAndSendToDmsSerializer(serializers.Serializer):
+    """
+    Serializer for generating XML and sending it to a DMS.
+    """
     utente = serializers.CharField(max_length=100)
     token = serializers.CharField(max_length=255)
     elenco_schedine = SchedinaSerializer(many=True)

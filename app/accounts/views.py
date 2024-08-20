@@ -47,29 +47,25 @@ class UsersListAPI(APIView):
 
     @method_decorator(is_active)
     def get(self, request):
-        """
-        Get all users if the user is a superuser
-        """
         user = request.user
-        if user.is_superuser or user.type == ADMIN:
+        queryset = User.objects.all()
+
+        if not user.is_superuser and user.type != ADMIN:
+            queryset = queryset.filter(id=user.id)
+        else:
             type_param = request.query_params.get('type', None)
             if type_param:
-                obj = User.objects.filter(type=type_param)
-            else:
-                obj = User.objects.all()
+                queryset = queryset.filter(type=type_param)
 
-            obj = obj.annotate(
-                is_logged_in_user=Case(
-                    When(id=user.id, then=Value(1)),
-                    default=Value(0),
-                    output_field=IntegerField()
-                )
-            ).order_by('-is_logged_in_user')
+        queryset = queryset.annotate(
+            is_logged_in_user=Case(
+                When(id=user.id, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        ).order_by('-is_logged_in_user')
 
-        else:
-            obj = User.objects.filter(id=user.id)
-
-        serializer = self.serializer_class(obj, many=True)
+        serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
