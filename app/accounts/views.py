@@ -8,10 +8,11 @@ import stripe
 import xml.etree.ElementTree as ET
 import requests
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
-from .functions import is_active, is_admin, calculate_total_cost, calculate_discount, \
-    handle_refund_created, get_google_calendar_service, get_busy_dates_from_reservations, \
-    get_busy_dates_from_calendar, process_stripe_refund, cancel_reservation_and_remove_event, is_room_available, \
-    handle_checkout_session_completed
+from .filters import ReservationFilter
+from .functions import (is_active, is_admin, calculate_total_cost, calculate_discount,
+                        get_google_calendar_service, get_busy_dates_from_reservations,
+                        get_busy_dates_from_calendar, cancel_reservation_and_remove_event,
+                        is_room_available, handle_checkout_session_completed)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
@@ -582,7 +583,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['user', 'room', 'check_in', 'check_out']
+    filterset_class = ReservationFilter
     search_fields = ['first_name_on_reservation', 'last_name_on_reservation', 'email_on_reservation']
     ordering_fields = ['check_in', 'check_out', 'total_cost']
 
@@ -632,13 +633,9 @@ class DiscountViewSet(viewsets.ModelViewSet):
     search_fields = ['code', 'description']
     ordering_fields = ['code', 'discount', 'start_date', 'end_date']
 
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
@@ -808,10 +805,6 @@ class StripeWebhook(APIView):
         if event['type'] == 'checkout.session.completed':
             session = event['data']['object']
             handle_checkout_session_completed(session)
-
-        if event['type'] == 'refund.created':
-            refund = event['data']['object']
-            handle_refund_created(refund)
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
@@ -1115,13 +1108,12 @@ class CreateCheckoutSessionLinkAPI(APIView):
 
 class CancelReservationAPI(APIView):
     """
-    API to cancel a reservation and process a refund using Stripe
+    API to cancel a reservation
     """
     permission_classes = [IsAuthenticated]
     serializer_class = CancelReservationSerializer
 
     @method_decorator(is_active)
-    @method_decorator(is_admin)
     def post(self, request):
         """
         Cancel a reservation and process a refund
@@ -1134,30 +1126,21 @@ class CancelReservationAPI(APIView):
         reservation_id = serializer.validated_data['reservation_id']
 
         try:
-            reservation = Reservation.objects.get(reservation_id__exact=reservation_id)
+
+            # Admins can cancel any reservation, but normal users can only cancel their own reservations
+            if request.user.is_admin:
+                reservation = Reservation.objects.get(reservation_id=reservation_id)
+            else:
+                reservation = Reservation.objects.get(reservation_id=reservation_id, user=request.user)
 
             if not reservation.payment_intent_id:
                 return Response({'error': 'No payment intent found for this reservation.'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
-            # If the difference between the check-in date and the current date
-            # is less than 4 days, a refund is not possible
-            if (reservation.check_in - datetime.now()).days < 4:
-                # Update reservation status and remove event from Google Calendar
-                cancel_reservation_and_remove_event(reservation)
-
-                return Response({'error': 'A refund is not possible for this reservation,'
-                                          'however the reservation has been canceled successfully.'},
-                                status=status.HTTP_200_OK)
-
-            # Process the refund using Stripe
-            refund = process_stripe_refund(reservation)
-
             cancel_reservation_and_remove_event(reservation)
 
             return Response({
                 'message': 'Reservation canceled and refund processed successfully.',
-                'refund_id': refund.id
             }, status=status.HTTP_200_OK)
 
         except Reservation.DoesNotExist:

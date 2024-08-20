@@ -5,13 +5,11 @@ import json
 from datetime import timedelta, datetime
 import django.contrib.auth
 from functools import wraps
-import stripe
-from click import Context
 from decouple import config
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
-from django.template.loader import render_to_string, get_template
+from django.template.loader import get_template
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
@@ -165,49 +163,34 @@ def send_payment_confirmation_email(reservation):
         print(f"Failed to send payment confirmation email: {str(e)}")
 
 
-def handle_refund_created(refund):
-    """
-    Function to handle the refund succeeded
-    """
-    try:
-        reservation = Reservation.objects.get(payment_intent=refund)
-
-        # Update reservation status to reflect refund
-        reservation.status = 'refunded'
-        reservation.save()
-
-        # Send a confirmation email to the user
-        send_refund_confirmation_email(reservation)
-
-        return Response({'status': 'success'}, status=status.HTTP_200_OK)
-    except Reservation.DoesNotExist:
-        return Response({"error": "Reservation not found"}, status=status.HTTP_404_NOT_FOUND)
-
-
-def send_refund_confirmation_email(reservation):
+def send_cancel_reservation_email(reservation):
     """
     Send a refund confirmation email to the user
     """
-    subject = 'Conferma di rimborso per la tua prenotazione'
-    html_message = render_to_string('account/stripe/refund_confirmation_email.html', {'reservation': reservation})
-    plain_message = strip_tags(html_message)
-    from_email = EMAIL
-    to_email = reservation.user.email
+    try:
+        serializer = ReservationSerializer(reservation)
+        reservation_data = serializer.data
 
-    send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+        context = {
+            'reservation': reservation_data,
+            'current_year': timezone.now().year,
+        }
+        subject = 'Conferma di cancellazione della tua prenotazione'
+        html_message = get_template('account/stripe/cancel_reservation_email.html').render(context)
+        plain_message = strip_tags(html_message)
+        from_email = EMAIL
+        to_email = reservation.user.email
 
-
-def process_stripe_refund(reservation):
-    """
-    Process a refund using Stripe
-    """
-    return stripe.Refund.create(payment_intent=reservation.payment_intent_id)
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+    except Exception as e:
+        print(f"Failed to send cancel reservation email: {str(e)}")
 
 
 def cancel_reservation_and_remove_event(reservation):
     """
     Cancel the reservation and remove the corresponding event from Google Calendar
     """
+    cancel_reservation_and_remove_event(reservation)
     reservation.status = CANCELED
     reservation.save()
 

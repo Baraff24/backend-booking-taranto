@@ -46,9 +46,8 @@
         </div>
         <div class="email-body">
             {% autoescape off %}
-            {% blocktrans with site_name=current_site.name site_domain=current_site.domain %}
             <p>Gentile {{ reservation.user.first_name }},</p>
-            <p>Ti informiamo che il rimborso per la tua prenotazione con ID {{ reservation.id }} è stato elaborato con successo.</p>
+            <p>Ti informiamo che la tua prenotazione con ID {{ reservation.reservation_id }} è stata cancellata.</p>
             <p>Dettagli della prenotazione:</p>
             <ul>
                 <li>Nome: {{ reservation.first_name_on_reservation }} {{ reservation.last_name_on_reservation }}</li>
@@ -58,14 +57,12 @@
                 <li>Stanza: {{ reservation.room.name }}</li>
                 <li>Data di check-in: {{ reservation.check_in }}</li>
                 <li>Data di check-out: {{ reservation.check_out }}</li>
-                <li>Totale rimborsato: {{ reservation.total_cost }} EUR</li>
             </ul>
             <p>Per ulteriori informazioni o assistenza, non esitare a contattarci.</p>
-            {% endblocktrans %}
             {% endautoescape %}
         </div>
         <div class="email-footer">
-            <p>&copy; {{ current_year }} {{ current_site.name }}. Tutti i diritti riservati.</p>
+            <p>&copy; {{ current_year }} Sitename.com. Tutti i diritti riservati.</p>
         </div>
     </div>
 </body>

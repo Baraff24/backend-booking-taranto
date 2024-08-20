@@ -323,6 +323,16 @@ paths:
         schema:
           type: string
           format: date
+      - in: query
+        name: created_at_gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: created_at_lte
+        schema:
+          type: string
+          format: date-time
       - name: ordering
         required: false
         in: query
@@ -777,6 +787,84 @@ paths:
       - cookieAuth: []
       - tokenAuth: []
       - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/accounts/rooms/{id}/images/:
+    get:
+      operationId: accounts_rooms_images_retrieve
+      description: Get all images of a room
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomImage'
+          description: ''
+  /api/v1/accounts/rooms/{id}/images/add/:
+    post:
+      operationId: accounts_rooms_images_add_create
+      description: Add an image to a room
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomImage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RoomImage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RoomImage'
+        required: true
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomImage'
+          description: ''
+  /api/v1/accounts/rooms/images/{id}/delete/:
+    delete:
+      operationId: accounts_rooms_images_delete_destroy
+      description: Delete an image from a room
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      security:
+      - basicAuth: []
+      - cookieAuth: []
+      - tokenAuth: []
       responses:
         '204':
           description: No response body
@@ -1846,8 +1934,12 @@ components:
           type: integer
         calendar_id:
           type: string
+          readOnly: true
           nullable: true
-          maxLength: 255
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomImage'
     PatchedStructureRoom:
       type: object
       description: Serializer for the Structure model
@@ -1871,7 +1963,7 @@ components:
           items:
             $ref: '#/components/schemas/Room'
           readOnly: true
-        structure_images:
+        images:
           type: array
           items:
             $ref: '#/components/schemas/StructureImage'
@@ -2036,14 +2128,38 @@ components:
           type: integer
         calendar_id:
           type: string
+          readOnly: true
           nullable: true
-          maxLength: 255
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomImage'
       required:
+      - calendar_id
       - cost_per_night
       - id
       - max_people
       - name
       - structure
+    RoomImage:
+      type: object
+      description: Serializer for the StructureImage model
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          readOnly: true
+        alt:
+          type: string
+          maxLength: 100
+        room:
+          type: integer
+      required:
+      - id
+      - image
+      - room
     RoomStatusEnum:
       enum:
       - AVAILABLE
@@ -2193,7 +2309,7 @@ components:
           items:
             $ref: '#/components/schemas/Room'
           readOnly: true
-        structure_images:
+        images:
           type: array
           items:
             $ref: '#/components/schemas/StructureImage'
@@ -2202,9 +2318,9 @@ components:
       - address
       - cis
       - id
+      - images
       - name
       - rooms
-      - structure_images
     Token:
       type: object
       description: Serializer for Token model.
