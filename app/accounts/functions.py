@@ -6,11 +6,12 @@ from datetime import timedelta, datetime
 import django.contrib.auth
 from functools import wraps
 import stripe
+from click import Context
 from decouple import config
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
-from django.template.loader import render_to_string
+from django.template.loader import render_to_string, get_template
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
@@ -144,8 +145,9 @@ def send_payment_confirmation_email(reservation):
     """
     try:
         subject = 'Conferma di pagamento per la tua prenotazione'
-        html_message = render_to_string('account/stripe/payment_confirmation_email.html',
-                                        {'reservation': reservation})
+        html_message = get_template('account/stripe/payment_confirmation_email.html').render({
+            'reservation': reservation.get_serialized_data()
+        })
         plain_message = strip_tags(html_message)
         from_email = EMAIL
         to_email = reservation.user.email
