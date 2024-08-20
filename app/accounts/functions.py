@@ -22,7 +22,7 @@ from googleapiclient.discovery import build
 
 from allauth.account.models import EmailAddress
 
-from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID
+from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
 from accounts.models import Reservation, Discount, GoogleOAuthCredentials
 
 User = django.contrib.auth.get_user_model()
@@ -91,6 +91,10 @@ def handle_checkout_session_completed(session):
 
         # Update the payment intent ID in the reservation
         reservation.payment_intent_id = session['payment_intent']
+
+        # Add the reservation to Google Calendar
+        service = get_google_calendar_service()
+        add_reservation_to_google_calendar(service, reservation)
 
         # Update the reservation status to PAID
         reservation.status = PAID
@@ -194,7 +198,7 @@ def cancel_reservation_and_remove_event(reservation):
     """
     Cancel the reservation and remove the corresponding event from Google Calendar
     """
-    reservation.status = 'canceled'
+    reservation.status = CANCELED
     reservation.save()
 
     try:
