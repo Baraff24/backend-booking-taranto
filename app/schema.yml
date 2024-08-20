@@ -1207,7 +1207,7 @@ paths:
   /api/v1/accounts/users/:
     get:
       operationId: accounts_users_retrieve
-      description: Get all users if the user is a superuser
+      description: List all users or create a new user
       tags:
       - accounts
       security:
@@ -1621,7 +1621,7 @@ components:
   schemas:
     AvailableRoomsForDates:
       type: object
-      description: Serializer for the AvailableRoomForDates API
+      description: Serializer for rooms available for specific dates.
       properties:
         id:
           type: integer
@@ -1640,7 +1640,7 @@ components:
         max_people:
           type: integer
           maximum: 2147483647
-          minimum: -2147483648
+          minimum: 0
         structure:
           allOf:
           - $ref: '#/components/schemas/Structure'
@@ -1653,6 +1653,7 @@ components:
       - structure
     CalculateDiscount:
       type: object
+      description: Serializer for calculating the discount for a reservation.
       properties:
         reservation:
           type: string
@@ -1665,6 +1666,7 @@ components:
       - reservation
     CancelReservation:
       type: object
+      description: Serializer for canceling a reservation.
       properties:
         reservation_id:
           type: string
@@ -1673,7 +1675,7 @@ components:
       - reservation_id
     CompleteProfile:
       type: object
-      description: Serializer for the User model to complete profile
+      description: Serializer for completing a user's profile.
       properties:
         first_name:
           type: string
@@ -1687,6 +1689,7 @@ components:
           maxLength: 20
     CreateCheckoutSession:
       type: object
+      description: Serializer for creating a Stripe checkout session.
       properties:
         reservation_id:
           type: string
@@ -1695,7 +1698,7 @@ components:
       - reservation_id
     Discount:
       type: object
-      description: Serializer for the Discount model
+      description: Serializer for the Discount model.
       properties:
         id:
           type: integer
@@ -1738,7 +1741,7 @@ components:
       - start_date
     Email:
       type: object
-      description: Serializer for the email field
+      description: Serializer for the email field.
       properties:
         email:
           type: string
@@ -1747,6 +1750,7 @@ components:
       - email
     GenerateXmlAndSendToDms:
       type: object
+      description: Serializer for generating XML and sending it to a DMS.
       properties:
         utente:
           type: string
@@ -1807,7 +1811,7 @@ components:
       - uid
     PatchedDiscount:
       type: object
-      description: Serializer for the Discount model
+      description: Serializer for the Discount model.
       properties:
         id:
           type: integer
@@ -1841,7 +1845,7 @@ components:
             type: integer
     PatchedReservation:
       type: object
-      description: Serializer for the Reservation model
+      description: Serializer for the Reservation model.
       properties:
         id:
           type: integer
@@ -1855,7 +1859,7 @@ components:
         number_of_people:
           type: integer
           maximum: 2147483647
-          minimum: -2147483648
+          minimum: 0
         discount:
           allOf:
           - $ref: '#/components/schemas/Discount'
@@ -1910,7 +1914,7 @@ components:
           readOnly: true
     PatchedRoom:
       type: object
-      description: Serializer for the Room model
+      description: Serializer for the Room model.
       properties:
         id:
           type: integer
@@ -1929,7 +1933,7 @@ components:
         max_people:
           type: integer
           maximum: 2147483647
-          minimum: -2147483648
+          minimum: 0
         structure:
           type: integer
         calendar_id:
@@ -1942,7 +1946,7 @@ components:
             $ref: '#/components/schemas/RoomImage'
     PatchedStructureRoom:
       type: object
-      description: Serializer for the Structure model
+      description: Serializer for the Structure model with associated rooms.
       properties:
         id:
           type: integer
@@ -1999,7 +2003,7 @@ components:
       - email
     Reservation:
       type: object
-      description: Serializer for the Reservation model
+      description: Serializer for the Reservation model.
       properties:
         id:
           type: integer
@@ -2013,7 +2017,7 @@ components:
         number_of_people:
           type: integer
           maximum: 2147483647
-          minimum: -2147483648
+          minimum: 0
         discount:
           allOf:
           - $ref: '#/components/schemas/Discount'
@@ -2104,7 +2108,7 @@ components:
       - detail
     Room:
       type: object
-      description: Serializer for the Room model
+      description: Serializer for the Room model.
       properties:
         id:
           type: integer
@@ -2123,7 +2127,7 @@ components:
         max_people:
           type: integer
           maximum: 2147483647
-          minimum: -2147483648
+          minimum: 0
         structure:
           type: integer
         calendar_id:
@@ -2143,7 +2147,7 @@ components:
       - structure
     RoomImage:
       type: object
-      description: Serializer for the StructureImage model
+      description: Serializer for the StructureImage model.
       properties:
         id:
           type: integer
@@ -2170,6 +2174,7 @@ components:
         * `UNAVAILABLE` - Unavailable
     Schedina:
       type: object
+      description: Serializer for handling individual guest registration forms (Schedina).
       properties:
         tipo_alloggiati:
           type: string
@@ -2242,7 +2247,7 @@ components:
         * `2` - F
     Structure:
       type: object
-      description: Serializer for the Structure model
+      description: Serializer for the Structure model.
       properties:
         id:
           type: integer
@@ -2269,7 +2274,7 @@ components:
       - name
     StructureImage:
       type: object
-      description: Serializer for the StructureImage model
+      description: Serializer for the StructureImage model.
       properties:
         id:
           type: integer
@@ -2288,7 +2293,7 @@ components:
       - structure
     StructureRoom:
       type: object
-      description: Serializer for the Structure model
+      description: Serializer for the Structure model with associated rooms.
       properties:
         id:
           type: integer
@@ -2340,7 +2345,7 @@ components:
         * `ADMIN` - Admin
     User:
       type: object
-      description: Serializer for the User model
+      description: Serializer for the User model.
       properties:
         id:
           type: integer
