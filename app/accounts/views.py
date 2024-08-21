@@ -855,59 +855,6 @@ class AvailableRoomsForDatesAPI(APIView):
         return Response(final_available_rooms, status=status.HTTP_200_OK)
 
 
-class AvailableRoomAPI(APIView):
-    serializer_class = AvailableRoomsForDatesSerializer
-
-    def get(self, request):
-        room_id = request.query_params.get('room_id')
-        check_in_date = request.query_params.get('check_in')
-        check_out_date = request.query_params.get('check_out')
-
-        if not room_id or not check_in_date or not check_out_date:
-            return Response({'error': 'room_id, check_in and check_out dates are required.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            check_in = datetime.strptime(check_in_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
-            check_out = datetime.strptime(check_out_date, '%Y-%m-%d').replace(tzinfo=pytz.UTC)
-        except ValueError:
-            return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        room = Room.objects.select_related('structure').filter(id=room_id).first()
-        if not room:
-            return Response({'error': 'Room does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            service = get_google_calendar_service()
-            if not service:
-                return Response({'error': 'Google Calendar service unavailable for this room.'},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-            busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
-            busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
-
-            available_dates = []
-            unavailable_dates = []
-            current_date = check_in.date()
-            while current_date <= check_out.date():
-                if current_date.strftime('%Y-%m-%d') not in busy_dates:
-                    available_dates.append(current_date.strftime('%Y-%m-%d'))
-                else:
-                    unavailable_dates.append(current_date.strftime('%Y-%m-%d'))
-                current_date += timedelta(days=1)
-
-            room_data = self.serializer_class({
-                'structure': room.structure,
-                'room': room,
-                'available_dates': available_dates,
-                'unavailable_dates': unavailable_dates
-            }).data
-
-            return Response(room_data, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class RentRoomAPI(APIView):
     """
     API to rent a room

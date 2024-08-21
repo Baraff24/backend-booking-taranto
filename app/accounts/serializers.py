@@ -77,7 +77,7 @@ class StructureSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        StructureImage.objects.filter(structure=instance).delete()  # Pulisci le immagini esistenti
+        StructureImage.objects.filter(structure=instance).delete()
         StructureImage.objects.bulk_create(
             [StructureImage(structure=instance, **image_data) for image_data in images_data]
         )

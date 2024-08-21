@@ -8,6 +8,7 @@ from functools import wraps
 from decouple import config
 from django.core.mail import send_mail
 from django.core.cache import cache
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.template.loader import get_template
 from django.utils import timezone
@@ -354,8 +355,7 @@ def get_busy_dates_from_reservations(room, check_in, check_out):
         check_out__gte=check_in,
         check_in__lte=check_out
     ).exclude(
-        status=UNPAID,
-        created_at__lt=(current_time - timedelta(minutes=15))
+        Q(status=UNPAID) & Q(created_at__lt=(current_time - timedelta(minutes=10)))
     )
 
     # Collect busy dates from valid reservations

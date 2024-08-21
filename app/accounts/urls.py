@@ -7,12 +7,12 @@ from rest_framework.routers import DefaultRouter
 from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     StructureViewSet, RoomViewSet, ReservationViewSet,
                     DiscountViewSet, GoogleCalendarInitAPI, GoogleCalendarRedirectAPI,
-                    RentRoomAPI, AvailableRoomAPI, StripeWebhook,
+                    RentRoomAPI, StripeWebhook,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
                     DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI,
-                    RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI, GetRoomImagesAPI, AddRoomImageAPI,
-                    DeleteRoomImageAPI)
+                    RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI,
+                    GetRoomImagesAPI, AddRoomImageAPI, DeleteRoomImageAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -40,7 +40,6 @@ urlpatterns = [
     path('room/create-room/', CreateRoomAPI.as_view(), name='create-room'),
     path('room/rent-room/', RentRoomAPI.as_view(), name='rent-room'),
     path('room/available-rooms-for-dates/', AvailableRoomsForDatesAPI.as_view(), name='available-rooms-for-dates'),
-    path('room/available-room/', AvailableRoomAPI.as_view(), name='available-rooms'),
     path('discount/calculate-discount/', CalculateDiscountAPI.as_view(), name='calculate-discount'),
     path('stripe/create-checkout-session/', CreateCheckoutSessionLinkAPI.as_view(), name='create-checkout-session'),
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
