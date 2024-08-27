@@ -1183,7 +1183,7 @@ class AuthenticationTestAPIView(APIView):
             try:
 
                 # Check if there is an existing valid token in the database
-                existing_token = TokenInfoAllogiatiWeb.objects.filter(expires__gt=datetime.now()).first()
+                existing_token = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
                 if not existing_token:
                     try:
                         generate_and_send_token_allogiati_web_request(structure_id)
