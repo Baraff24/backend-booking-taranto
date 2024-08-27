@@ -1182,13 +1182,16 @@ class AuthenticationTestAPIView(APIView):
 
             try:
 
-                try:
-                    generate_and_send_token_allogiati_web_request(structure_id)
-                except Exception as e:
-                    return Response(
-                        {"error": str(e)},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                # Check if there is an existing valid token in the database
+                existing_token = TokenInfoAllogiatiWeb.objects.filter(expires__gt=datetime.now()).first()
+                if not existing_token:
+                    try:
+                        generate_and_send_token_allogiati_web_request(structure_id)
+                    except Exception as e:
+                        return Response(
+                            {"error": str(e)},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                 # Retrieve the user's information from the database
                 user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)

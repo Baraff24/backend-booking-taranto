@@ -430,11 +430,6 @@ def generate_and_send_token_allogiati_web_request(structure_id):
     try:
         user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
 
-        # Check if a valid token exists
-        existing_token = TokenInfoAllogiatiWeb.objects.filter(expires__gt=datetime.now()).first()
-        if existing_token:
-            return existing_token
-
         envelope = ET.Element("soap:Envelope", attrib={
             "xmlns:soap": "http://www.w3.org/2003/05/soap-envelope",
             "xmlns:all": "AlloggiatiService"
