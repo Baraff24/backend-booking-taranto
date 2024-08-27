@@ -1181,6 +1181,15 @@ class AuthenticationTestAPIView(APIView):
             structure_id = serializer.validated_data['structure_id']
 
             try:
+
+                try:
+                    generate_and_send_token_allogiati_web_request(structure_id)
+                except Exception as e:
+                    return Response(
+                        {"error": e},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
                 # Retrieve the user's information from the database
                 user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
 
