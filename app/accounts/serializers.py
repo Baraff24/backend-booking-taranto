@@ -5,7 +5,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from .constants import CANCELED
-from .models import User, Structure, Room, Reservation, Discount, StructureImage, RoomImage
+from .models import (User, Structure, Room, Reservation, Discount,
+                     StructureImage, RoomImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -264,6 +265,30 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
         Helper method to return the reservation instance after validation.
         """
         return get_object_or_404(Reservation, reservation_id__exact=self.validated_data['reservation_id'])
+
+
+class UserAllogiatiWebSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the UserAllogiatiWeb model.
+    """
+
+    class Meta:
+        model = UserAllogiatiWeb
+        fields = '__all__'
+
+
+class TokenInfoAllogiatiWebSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the TokenInfoAllogiatiWeb model.
+    """
+
+    class Meta:
+        model = TokenInfoAllogiatiWeb
+        fields = '__all__'
+
+
+class AuthenticationTestSerializer(serializers.Serializer):
+    structure_id = serializers.IntegerField(required=True)
 
 
 class SchedinaSerializer(serializers.Serializer):

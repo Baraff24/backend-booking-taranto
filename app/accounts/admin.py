@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (User, Structure, Room,
                      Reservation, Discount, GoogleOAuthCredentials,
-                     StructureImage)
+                     StructureImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb)
 
 
 class CustomUserAdmin(UserAdmin):
@@ -37,3 +37,5 @@ admin.site.register(StructureImage)
 admin.site.register(Room)
 admin.site.register(Reservation)
 admin.site.register(Discount)
+admin.site.register(UserAllogiatiWeb)
+admin.site.register(TokenInfoAllogiatiWeb)

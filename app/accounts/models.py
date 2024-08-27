@@ -202,3 +202,40 @@ class GoogleOAuthCredentials(models.Model):
 
     def __str__(self):
         return f"Google OAuth Credentials (Client ID: {self.client_id})"
+
+
+class UserAllogiatiWeb(models.Model):
+    """
+    Model representing the user for the Allogiati Web app.
+    Fields:
+    - structure: Foreign key to the User model
+    - allogiati_web_user: Allogiati web user assigned to the structure
+    - alloggiati_web_password: Password for the Allogiati Web app
+    - wskey: Web service key for the Allogiati Web app
+    - created_at: Timestamp of when the user was created
+    """
+    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='structure_allogiati_web')
+    allogiati_web_user = models.CharField(max_length=100)
+    alloggiati_web_password = models.CharField(max_length=100)
+    wskey = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"User for Allogiati Web: {self.structure}"
+
+
+class TokenInfoAllogiatiWeb(models.Model):
+    """
+    Model representing the token info for the Allogiati Web app.
+    Fields:
+    - issued: Timestamp of when the token was issued
+    - expires: Timestamp of when the token expires
+    - token: Access token for the Allogiati Web app
+    - created_at: Timestamp of when the token was created
+    """
+    issued = models.DateTimeField()
+    expires = models.DateTimeField()
+    token = models.CharField(max_length=255)
+
+    def __str__(self):
+        return "Token Info for Allogiati Web"

@@ -7,21 +7,26 @@ import pytz
 import stripe
 import xml.etree.ElementTree as ET
 import requests
-from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
+from requests import RequestException
+
+from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID, ALLOGGIATI_WEB_URL
 from .filters import ReservationFilter
 from .functions import (is_active, is_admin, calculate_total_cost, calculate_discount,
                         get_google_calendar_service, get_busy_dates_from_reservations,
-                        get_busy_dates_from_calendar, cancel_reservation_and_remove_event,
-                        is_room_available, handle_checkout_session_completed)
-from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage
+                        cancel_reservation_and_remove_event,
+                        is_room_available, handle_checkout_session_completed, build_soap_request, parse_soap_response,
+                        generate_and_send_token_allogiati_web_request)
+from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
+    UserAllogiatiWeb, TokenInfoAllogiatiWeb
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
-                          CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer)
+                          CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
+                          AuthenticationTestSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import transaction
 from django.db.models import Case, When, Value, IntegerField, Q
 from django.utils import timezone
@@ -1159,3 +1164,86 @@ class GenerateXmlAndSendToDmsAPI(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AuthenticationTestAPIView(APIView):
+    """
+    API View to test the validity of an authentication token with the Alloggiati Web service.
+    """
+    serializer_class = AuthenticationTestSerializer
+
+    def post(self, request):
+        """
+        Handles POST requests to validate an authentication token.
+        """
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            structure_id = serializer.validated_data['structure_id']
+
+            try:
+                # Retrieve the user's information from the database
+                user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+
+                # Retrieve the token from the database
+                token = TokenInfoAllogiatiWeb.objects.first().token
+
+                if not token:
+                    return Response(
+                        {"error": "No token found in the database"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+                # Validate the retrieved token
+                soap_request = build_soap_request(user_info.allogiati_web_user, token)
+
+                # Send the request to the Alloggiati Web service
+                headers = {'Content-Type': 'application/soap+xml; charset=utf-8'}
+                response = requests.post(
+                    ALLOGGIATI_WEB_URL,
+                    data=soap_request,
+                    headers=headers,
+                    timeout=10
+                )
+
+                # Check for HTTP errors
+                response.raise_for_status()
+
+                # Parse the SOAP response
+                return parse_soap_response(response.content)
+
+            except ObjectDoesNotExist:
+                return Response(
+                    {"error": "Structure not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            except RequestException as e:
+                return Response(
+                    {"error": "Failed to connect to Alloggiati Web service"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+
+            except ET.ParseError as e:
+                return Response(
+                    {"error": "Invalid SOAP response format"},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+            except ValidationError as e:
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            except Exception as e:
+                return Response(
+                    {"error": "An unexpected error occurred"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        else:
+            return Response(
+                {"errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+

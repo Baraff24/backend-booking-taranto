@@ -1,11 +1,15 @@
 """
 This file contains all the functions and decorators used in the accounts app.
 """
+import xml.etree.ElementTree as ET
 import json
 from datetime import timedelta, datetime
 import django.contrib.auth
 from functools import wraps
+
+import requests
 from decouple import config
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db.models import Q
@@ -14,16 +18,16 @@ from django.template.loader import get_template
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
+from requests import RequestException
 from rest_framework import status
 from rest_framework.response import Response
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-
 from allauth.account.models import EmailAddress
 
-from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
-from accounts.models import Reservation, Discount, GoogleOAuthCredentials
+from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED, ALLOGGIATI_WEB_URL
+from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAllogiatiWeb, TokenInfoAllogiatiWeb
 from accounts.serializers import ReservationSerializer
 
 User = django.contrib.auth.get_user_model()
@@ -420,3 +424,180 @@ def get_busy_dates_from_calendar(service, room, check_in, check_out):
                 busy_dates.add(current_date.strftime('%Y-%m-%d'))
                 current_date += timedelta(days=1)
     return busy_dates
+
+
+def generate_and_send_token_allogiati_web_request(structure_id):
+    """
+    Generate an XML request to obtain a token from the Alloggiati Web service.
+
+    Args:
+        structure_id (int): ID of the structure for whom the token is being generated.
+
+    Returns:
+        Response: A DRF Response object with the token or error message.
+    """
+    try:
+        # Retrieve the user's information from the database
+        user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+
+        # Create the root element of the XML
+        envelope = ET.Element("soap:Envelope", attrib={
+            "xmlns:soap": "http://www.w3.org/2003/05/soap-envelope",
+            "xmlns:all": "AlloggiatiService"
+        })
+        ET.SubElement(envelope, "soap:Header")
+        body = ET.SubElement(envelope, "soap:Body")
+        generate_token = ET.SubElement(body, "all:GenerateToken")
+
+        # Add fields to the XML
+        ET.SubElement(generate_token, "all:Utente").text = user_info.allogiati_web_user
+        ET.SubElement(generate_token, "all:Password").text = user_info.alloggiati_web_password
+        ET.SubElement(generate_token, "all:WsKey").text = user_info.wskey
+
+        # Convert the XML to a string
+        xml_data = ET.tostring(envelope, encoding='utf-8', xml_declaration=True)
+
+        # Send the request to the SOAP service
+        headers = {'Content-Type': 'text/xml; charset=utf-8'}
+        response = requests.post(ALLOGGIATI_WEB_URL, data=xml_data, headers=headers, timeout=10)
+
+        # Handle the SOAP service's response
+        response.raise_for_status()  # Raise an HTTPError for bad HTTP status codes
+        return handle_soap_response(response.content)
+
+    except ObjectDoesNotExist:
+        return Response({"error": "Structure not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    except RequestException as e:
+        return Response({"error": "Failed to connect to SOAP service"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    except ET.ParseError as e:
+        return Response({"error": "Failed to parse the SOAP response"}, status=status.HTTP_502_BAD_GATEWAY)
+
+    except ValidationError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def handle_soap_response(xml_content):
+    """
+    Handle the SOAP service's response by parsing the XML and saving the token.
+
+    Args:
+        xml_content (bytes): The XML content received from the SOAP service.
+
+    Returns:
+        Response: A DRF Response object with the token information or an error message.
+    """
+    try:
+        # Parse the response XML
+        response_xml = ET.fromstring(xml_content)
+        namespace = {'ns': 'AlloggiatiService'}
+
+        # Extract and validate the result elements
+        esito = response_xml.find('.//ns:esito', namespace).text
+        errore_cod = response_xml.find('.//ns:ErroreCod', namespace).text
+        errore_des = response_xml.find('.//ns:ErroreDes', namespace).text
+        errore_dettaglio = response_xml.find('.//ns:ErroreDettaglio', namespace).text
+
+        if esito.lower() != 'true':
+            raise ValidationError(f"SOAP Error: Code={errore_cod}, Description={errore_des}, Details={errore_dettaglio}")
+
+        # Extract the token details
+        issued = response_xml.find('.//ns:issued', namespace).text
+        expires = response_xml.find('.//ns:expires', namespace).text
+        token = response_xml.find('.//ns:token', namespace).text
+
+        # Save the token information in the database
+        TokenInfoAllogiatiWeb.objects.create(
+            issued=datetime.fromisoformat(issued),
+            expires=datetime.fromisoformat(expires),
+            token=token
+        )
+
+        return Response({"token": token, "issued": issued, "expires": expires}, status=status.HTTP_200_OK)
+
+    except (ET.ParseError, AttributeError) as e:
+        raise ValidationError("Invalid SOAP response format.")
+
+    except ValidationError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def build_soap_request(username, token):
+    """
+    Constructs the SOAP request to test the authentication token.
+
+    Args:
+        username (str): Username for the Alloggiati Web service.
+        token (str): Authentication token to be validated.
+
+    Returns:
+        str: XML string of the SOAP request.
+    """
+    envelope = ET.Element('{http://www.w3.org/2003/05/soap-envelope}Envelope')
+    body = ET.SubElement(envelope, '{http://www.w3.org/2003/05/soap-envelope}Body')
+    auth_test = ET.SubElement(body, '{AlloggiatiService}Authentication_Test')
+
+    utente = ET.SubElement(auth_test, 'Utente')
+    utente.text = username
+
+    token_element = ET.SubElement(auth_test, 'token')
+    token_element.text = token
+
+    # Convert the XML element to string
+    xml_request = ET.tostring(envelope, encoding='utf-8', method='xml')
+    return xml_request
+
+
+def parse_soap_response(self, xml_response):
+    """
+    Parses the SOAP response from the Alloggiati Web service.
+
+    Args:
+        xml_response (bytes): XML response from the service.
+
+    Returns:
+        Response: A DRF Response object with the result of the operation.
+    """
+    namespaces = {
+        'soap': 'http://www.w3.org/2003/05/soap-envelope',
+        'all': 'AlloggiatiService'
+    }
+
+    root = ET.fromstring(xml_response)
+
+    # Navigate through the XML to extract data
+    esito_element = root.find('.//all:esito', namespaces)
+    errore_cod_element = root.find('.//all:ErroreCod', namespaces)
+    errore_des_element = root.find('.//all:ErroreDes', namespaces)
+    errore_dettaglio_element = root.find('.//all:ErroreDettaglio', namespaces)
+
+    if esito_element is None:
+        raise ValidationError("Missing 'esito' element in SOAP response.")
+
+    esito = esito_element.text.strip().lower()
+
+    if esito == 'true':
+        return Response(
+            {"message": "Authentication token is valid."},
+            status=status.HTTP_200_OK
+        )
+    else:
+        errore_cod = errore_cod_element.text.strip() if errore_cod_element is not None else ''
+        errore_des = errore_des_element.text.strip() if errore_des_element is not None else ''
+        errore_dettaglio = errore_dettaglio_element.text.strip() if errore_dettaglio_element is not None else ''
+
+        error_message = {
+            "esito": esito,
+            "error_code": errore_cod,
+            "error_description": errore_des,
+            "error_detail": errore_dettaglio
+        }
+
+        return Response(
+            {"error": error_message},
+            status=status.HTTP_400_BAD_REQUEST
+        )

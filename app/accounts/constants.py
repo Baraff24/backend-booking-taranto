@@ -1,6 +1,10 @@
 """
 This file contains the constants used in the accounts app.
 """
+
+# URL of the SOAP service for Alloggiati Web
+ALLOGGIATI_WEB_URL = 'https://alloggiatiweb.poliziadistato.it/service/service.asmx'
+
 # STATUS_CHOICES VALUES
 COMPLETE = 'COMPLETE'
 PENDING_COMPLETE_DATA = 'PENDING_EXTRA_DATA'
