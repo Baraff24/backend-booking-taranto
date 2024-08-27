@@ -1186,7 +1186,7 @@ class AuthenticationTestAPIView(APIView):
                     generate_and_send_token_allogiati_web_request(structure_id)
                 except Exception as e:
                     return Response(
-                        {"error": e},
+                        {"error": str(e)},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
@@ -1246,7 +1246,7 @@ class AuthenticationTestAPIView(APIView):
 
             except Exception as e:
                 return Response(
-                    {"error": "An unexpected error occurred"},
+                    {"error": str(e)},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 

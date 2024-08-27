@@ -478,7 +478,7 @@ def generate_and_send_token_allogiati_web_request(structure_id):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
-        return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def handle_soap_response(xml_content):
@@ -552,7 +552,7 @@ def build_soap_request(username, token):
     return xml_request
 
 
-def parse_soap_response(self, xml_response):
+def parse_soap_response(xml_response):
     """
     Parses the SOAP response from the Alloggiati Web service.
 
