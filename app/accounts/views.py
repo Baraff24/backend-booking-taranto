@@ -1194,6 +1194,11 @@ class AuthenticationTestAPIView(APIView):
                 user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
 
                 # Retrieve the token from the database
+                if not TokenInfoAllogiatiWeb.objects.exists():
+                    return Response(
+                        {"error": "No token found in the database"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
                 token = TokenInfoAllogiatiWeb.objects.first().token
 
                 if not token:
