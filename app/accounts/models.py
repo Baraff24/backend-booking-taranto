@@ -235,7 +235,7 @@ class TokenInfoAllogiatiWeb(models.Model):
     """
     issued = models.DateTimeField()
     expires = models.DateTimeField()
-    token = models.CharField(max_length=255)
+    token = models.CharField(max_length=500)
 
     def __str__(self):
         return "Token Info for Allogiati Web"
