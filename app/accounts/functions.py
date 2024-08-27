@@ -513,6 +513,7 @@ def build_soap_request(username, token):
 
     # Convert the XML element to string
     xml_request = ET.tostring(envelope, encoding='utf-8', method='xml')
+    print("SOAP Request:", xml_request.decode('utf-8'))  # Debug: Output the XML being sent
     return xml_request
 
 
@@ -526,6 +527,7 @@ def parse_soap_response(xml_response):
     Returns:
         Response: A DRF Response object with the result of the operation.
     """
+    print("SOAP Response:", xml_response.decode('utf-8'))  # Debug: Output the SOAP response
     namespaces = {
         'soap': 'http://www.w3.org/2003/05/soap-envelope',
         'all': 'AlloggiatiService'
