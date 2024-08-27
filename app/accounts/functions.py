@@ -429,6 +429,14 @@ def get_busy_dates_from_calendar(service, room, check_in, check_out):
 def generate_and_send_token_allogiati_web_request(structure_id):
     try:
         user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+
+        # Check if a valid token exists
+        existing_token = TokenInfoAllogiatiWeb.objects.filter(expires__gt=datetime.now()).first()
+        if existing_token:
+            return Response({
+                "message": "Using existing valid token"
+            }, status=status.HTTP_200_OK)
+
         envelope = ET.Element("soap:Envelope", attrib={
             "xmlns:soap": "http://www.w3.org/2003/05/soap-envelope",
             "xmlns:all": "AlloggiatiService"
@@ -501,21 +509,29 @@ def build_soap_request(username, token):
     Returns:
         str: XML string of the SOAP request.
     """
-    envelope = ET.Element('{http://www.w3.org/2003/05/soap-envelope}Envelope')
+    # Create the root element with explicit namespace prefixes
+    envelope = ET.Element('{http://www.w3.org/2003/05/soap-envelope}Envelope', attrib={
+        'xmlns:soap': 'http://www.w3.org/2003/05/soap-envelope',
+        'xmlns:all': 'AlloggiatiService'
+    })
+
+    # Add the Header (even if it's empty)
+    ET.SubElement(envelope, '{http://www.w3.org/2003/05/soap-envelope}Header')
+
+    # Create the Body and Authentication_Test elements
     body = ET.SubElement(envelope, '{http://www.w3.org/2003/05/soap-envelope}Body')
     auth_test = ET.SubElement(body, '{AlloggiatiService}Authentication_Test')
 
-    utente = ET.SubElement(auth_test, 'Utente')
+    # Add the Utente and token elements with the 'all' prefix
+    utente = ET.SubElement(auth_test, '{AlloggiatiService}Utente')
     utente.text = username
 
-    token_element = ET.SubElement(auth_test, 'token')
+    token_element = ET.SubElement(auth_test, '{AlloggiatiService}token')
     token_element.text = token
 
-    # Convert the XML element to string
+    # Convert the XML element tree to a string
     xml_request = ET.tostring(envelope, encoding='utf-8', method='xml')
-    print("SOAP Request:", xml_request.decode('utf-8'))  # Debug: Output the XML being sent
     return xml_request
-
 
 def parse_soap_response(xml_response):
     """
