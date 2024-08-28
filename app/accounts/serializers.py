@@ -15,6 +15,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     Custom token serializer to use custom claims.
     Use email instead of username for authentication.
     """
+
+    # Specify the field to use for authentication
+    username_field = 'email'
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -43,7 +47,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             return super().validate(attrs)
         else:
             raise serializers.ValidationError('Must include "email" and "password".')
-
 
 
 class UserSerializer(serializers.ModelSerializer):
