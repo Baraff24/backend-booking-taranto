@@ -1,6 +1,7 @@
 """
 Serializers for the accounts app.
 """
+from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -22,6 +23,27 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['email'] = user.email
 
         return token
+
+    def validate(self, attrs):
+        # Override the default method to use email instead of username
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if email and password:
+            user = authenticate(
+                request=self.context.get('request'),
+                username=email,
+                password=password
+            )
+
+            if not user:
+                raise serializers.ValidationError('Invalid credentials')
+
+            attrs['user'] = user
+            return super().validate(attrs)
+        else:
+            raise serializers.ValidationError('Must include "email" and "password".')
+
 
 
 class UserSerializer(serializers.ModelSerializer):
