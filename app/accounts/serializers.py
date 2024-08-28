@@ -3,10 +3,25 @@ Serializers for the accounts app.
 """
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
 from .models import (User, Structure, Room, Reservation, Discount,
                      StructureImage, RoomImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb)
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom token serializer to use custom claims.
+    Use email instead of username for authentication.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom claims
+        token['email'] = user.email
+
+        return token
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -26,7 +41,7 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'telephone']
+        fields = ['username', 'first_name', 'last_name', 'telephone']
 
 
 class EmailSerializer(serializers.Serializer):

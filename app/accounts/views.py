@@ -157,6 +157,7 @@ class CompleteProfileAPI(APIView):
                 user.first_name = serializer.validated_data['first_name']
                 user.last_name = serializer.validated_data['last_name']
                 user.telephone = serializer.validated_data['telephone']
+                user.username = serializer.validated_data['username']
                 user.status = COMPLETE
                 user.save()
                 return Response({'user_status': COMPLETE}, status=status.HTTP_200_OK)
