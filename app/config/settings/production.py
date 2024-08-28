@@ -30,7 +30,7 @@ AWS_DEFAULT_ACL = None
 # AWS_QUERYSTRING_AUTH = False
 
 # Media and static files
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, '../../vol/', 'staticfiles')
