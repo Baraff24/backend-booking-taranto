@@ -34,7 +34,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, '../../vol/', 'staticfiles')
 
 STORAGES = {
     'default': {
-        'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        'BACKEND': 'storages.backends.s3.S3Storage',
     },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
