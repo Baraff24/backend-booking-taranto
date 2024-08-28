@@ -526,6 +526,7 @@ def build_soap_request(username, token):
     xml_request = ET.tostring(envelope, encoding='utf-8', method='xml')
     return xml_request
 
+
 def parse_soap_response(xml_response):
     """
     Parses the SOAP response from the Alloggiati Web service.
