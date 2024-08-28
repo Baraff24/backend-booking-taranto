@@ -1,5 +1,7 @@
 from celery.schedules import crontab
 from decouple import config
+from google.auth.environment_vars import AWS_DEFAULT_REGION
+
 from .base import *
 
 
@@ -24,6 +26,7 @@ AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazo
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
+AWS_DEFAULT_ACL = None
 # AWS_QUERYSTRING_AUTH = False
 
 # Media and static files
