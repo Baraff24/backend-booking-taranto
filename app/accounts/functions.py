@@ -492,12 +492,27 @@ def parse_soap_response(xml_response, action_namespace, expected_fields):
 
     root = ET.fromstring(xml_response)
     esito_element = root.find(f'.//{action_namespace}:esito', namespaces)
+
     if esito_element is None or esito_element.text.strip().lower() != 'true':
-        error_details = {field: root.find(f'.//{action_namespace}:{field}', namespaces).text.strip()
-                         for field in expected_fields}
+        error_details = {}
+        for field in expected_fields:
+            element = root.find(f'.//{action_namespace}:{field}', namespaces)
+            if element is not None and element.text is not None:
+                error_details[field] = element.text.strip()
+            else:
+                error_details[field] = "Missing or empty field"
+
         raise ValidationError("SOAP Error", error_details)
 
-    return {field: root.find(f'.//{action_namespace}:{field}', namespaces).text.strip() for field in expected_fields}
+    result = {}
+    for field in expected_fields:
+        element = root.find(f'.//{action_namespace}:{field}', namespaces)
+        if element is not None and element.text is not None:
+            result[field] = element.text.strip()
+        else:
+            result[field] = None  # or set a default value or handle as needed
+
+    return result
 
 
 def get_or_create_token(structure_id):
