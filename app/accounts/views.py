@@ -1174,7 +1174,7 @@ class SendElencoSchedineAPIView(APIView):
     """
     serializer_class = SendElencoSchedineSerializer
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         """
         Handles POST requests to validate and send the Elenco Schedine.
         """
@@ -1184,16 +1184,17 @@ class SendElencoSchedineAPIView(APIView):
 
         try:
             data = serializer.validated_data
-            structure_id = data.get('utente')
+            structure_id = data.get('structure_id')
             elenco_schedine = [schedina for schedina in data['elenco_schedine']]
 
-            # Retrieve or generate a valid token
-            token_info = get_or_create_token(structure_id)
+            # Retrieve or generate a valid token (already handled in serializer validate method)
+            utente = data['utente']
+            token = data['token']
 
             # Build the SOAP request
             body_content = {
-                'Utente': ('{AlloggiatiService}Utente', data['utente']),
-                'token': ('{AlloggiatiService}token', token_info.token),
+                'Utente': ('{AlloggiatiService}Utente', utente),
+                'token': ('{AlloggiatiService}token', token),
             }
 
             elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
@@ -1201,7 +1202,7 @@ class SendElencoSchedineAPIView(APIView):
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina
             body_content['ElencoSchedine'] = (
-                '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement).decode('utf-8')
+                '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement, encoding='unicode')
             )
 
             soap_request = build_soap_envelope(

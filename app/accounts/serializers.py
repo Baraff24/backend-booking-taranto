@@ -3,6 +3,7 @@ Serializers for the accounts app.
 """
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
@@ -379,9 +380,10 @@ class SendElencoSchedineSerializer(serializers.Serializer):
     """
     Serializer for generating XML and sending it to a DMS.
     """
-    utente = serializers.CharField(max_length=100)
-    token = serializers.CharField(max_length=255)
+    utente = serializers.CharField(read_only=True)
+    token = serializers.CharField(read_only=True)
     elenco_schedine = SchedinaSerializer(many=True)
+    structure_id = serializers.IntegerField()
 
     @staticmethod
     def validate_elenco_schedine(value):
@@ -390,5 +392,24 @@ class SendElencoSchedineSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        # Additional cross-field validations if needed
+        # Extract structure_id from the validated data
+        structure_id = data.get('structure_id')
+
+        try:
+            # Get the user information from UserAllogiatiWeb
+            user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+            data['utente'] = user_info.allogiati_web_user
+        except UserAllogiatiWeb.DoesNotExist:
+            raise serializers.ValidationError("Utente associated with the structure ID not found.")
+
+        try:
+            # Get the valid token from TokenInfoAllogiatiWeb
+            token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
+            if not token_info:
+                raise serializers.ValidationError("No valid token found. Please generate a new one.")
+            data['token'] = token_info.token
+        except TokenInfoAllogiatiWeb.DoesNotExist:
+            raise serializers.ValidationError("Token not found. Please generate a new one.")
+
+        # Additional cross-field validations can go here if needed
         return data
