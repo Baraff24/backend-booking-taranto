@@ -1204,7 +1204,8 @@ class AuthenticationTestAPIView(APIView):
             response_content = send_soap_request(soap_request)
 
             # Parse and return the SOAP response
-            return parse_soap_response(response_content, 'all', ['esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio'])
+            response_data = parse_soap_response(response_content, 'all', ['esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio'])
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
             return Response(
@@ -1235,3 +1236,4 @@ class AuthenticationTestAPIView(APIView):
                 {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
