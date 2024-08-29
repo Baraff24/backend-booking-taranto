@@ -1,12 +1,9 @@
 """
 This module contains the views of the accounts app.
 """
-import os
-
 import pytz
 import stripe
 import xml.etree.ElementTree as ET
-import requests
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
 from .filters import ReservationFilter
 from .functions import (is_active, is_admin, calculate_total_cost, calculate_discount,
@@ -20,7 +17,7 @@ from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCre
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
-                          StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
+                          StructureImageSerializer, AvailableRoomsForDatesSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
                           AuthenticationTestSerializer, SendElencoSchedineSerializer)
 from datetime import datetime, timedelta
@@ -37,7 +34,6 @@ from rest_framework import status, filters, viewsets
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from lxml import etree
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
