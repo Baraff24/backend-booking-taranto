@@ -66,7 +66,7 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'telephone']
+        fields = ['first_name', 'last_name', 'telephone']
 
 
 class EmailSerializer(serializers.Serializer):
