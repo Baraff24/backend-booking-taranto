@@ -334,6 +334,7 @@ class AuthenticationTestSerializer(serializers.Serializer):
 class SchedinaSerializer(serializers.Serializer):
     """
     Serializer for handling individual guest registration forms (Schedina).
+    This serializer will create a single string representing the entire schedina.
     """
     tipo_alloggiati = serializers.CharField(max_length=2)
     data_arrivo = serializers.DateField(input_formats=['%d/%m/%Y'])
@@ -351,15 +352,36 @@ class SchedinaSerializer(serializers.Serializer):
     luogo_rilascio_documento = serializers.CharField(max_length=9)
     id_appartamento = serializers.CharField(max_length=6)
 
+    def to_representation(self, instance):
+        """
+        Override the to_representation method to concatenate all fields into a single string.
+        """
+        return (
+            f"{instance['tipo_alloggiati']}"
+            f"{instance['data_arrivo'].strftime('%d/%m/%Y')}"
+            f"{str(instance['numero_giorni_permanenza']).zfill(2)}"
+            f"{instance['cognome'].ljust(50)}"
+            f"{instance['nome'].ljust(30)}"
+            f"{instance['sesso']}"
+            f"{instance['data_nascita'].strftime('%d/%m/%Y')}"
+            f"{instance['comune_nascita'].ljust(9)}"
+            f"{instance['provincia_nascita']}"
+            f"{instance['stato_nascita'].ljust(9)}"
+            f"{instance['cittadinanza'].ljust(9)}"
+            f"{instance['tipo_documento'].ljust(5)}"
+            f"{instance['numero_documento'].ljust(20)}"
+            f"{instance['luogo_rilascio_documento'].ljust(9)}"
+            f"{instance['id_appartamento'].zfill(6)}"
+        ).upper()
 
-class GenerateXmlAndSendToDmsSerializer(serializers.Serializer):
+
+class SendElencoSchedineSerializer(serializers.Serializer):
     """
     Serializer for generating XML and sending it to a DMS.
     """
     utente = serializers.CharField(max_length=100)
     token = serializers.CharField(max_length=255)
     elenco_schedine = SchedinaSerializer(many=True)
-    id_appartamento = serializers.IntegerField()
 
     @staticmethod
     def validate_elenco_schedine(value):
@@ -368,5 +390,5 @@ class GenerateXmlAndSendToDmsSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        # Custom validations if needed
+        # Additional cross-field validations if needed
         return data

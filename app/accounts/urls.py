@@ -7,10 +7,10 @@ from rest_framework.routers import DefaultRouter
 from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     StructureViewSet, RoomViewSet, ReservationViewSet,
                     DiscountViewSet, GoogleCalendarInitAPI, GoogleCalendarRedirectAPI,
-                    RentRoomAPI, StripeWebhook,
+                    RentRoomAPI, StripeWebhook, SendElencoSchedineAPIView,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
-                    DeleteStructureImageAPI, CancelReservationAPI, GenerateXmlAndSendToDmsAPI,
+                    DeleteStructureImageAPI, CancelReservationAPI,
                     RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI,
                     GetRoomImagesAPI, AddRoomImageAPI, DeleteRoomImageAPI, AuthenticationTestAPIView)
 
@@ -44,7 +44,7 @@ urlpatterns = [
     path('stripe/create-checkout-session/', CreateCheckoutSessionLinkAPI.as_view(), name='create-checkout-session'),
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
     path('auth-test-alloggiati-web/', AuthenticationTestAPIView.as_view(), name='auth-test'),
-    path('generate-xml-and-send-to-dms/', GenerateXmlAndSendToDmsAPI.as_view(), name='generate-xml-and-send-to-dms'),
+    path('send-elenco-schedine/', SendElencoSchedineAPIView.as_view(), name='send-elenco-schedine'),
     path('stripe-webhook/', StripeWebhook.as_view(), name='stripe-webhook'),
     path('', include(router.urls)),
 ]

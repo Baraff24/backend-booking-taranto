@@ -22,7 +22,7 @@ from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSe
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer, GenerateXmlAndSendToDmsSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
-                          AuthenticationTestSerializer)
+                          AuthenticationTestSerializer, SendElencoSchedineSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -1098,73 +1098,6 @@ class CancelReservationAPI(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class GenerateXmlAndSendToDmsAPI(APIView):
-    """
-    API to generate an XML file and send it to a Document Management System
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = GenerateXmlAndSendToDmsSerializer
-
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
-    def post(self, request):
-        """
-        Generate an XML file and send it to a DMS
-        """
-        serializer = self.serializer_class(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        utente = serializer.validated_data['utente']
-        token = serializer.validated_data['token']
-        elenco_schedine = serializer.validated_data['elenco_schedine']
-        id_appartamento = serializer.validated_data['id_appartamento']
-
-        try:
-            # Create XML
-            root = ET.Element("soap:Envelope", attrib={
-                "xmlns:soap": "http://www.w3.org/2003/05/soap-envelope",
-                "xmlns:all": "AlloggiatiService"
-            })
-            body = ET.SubElement(root, "soap:Body")
-            gestione = ET.SubElement(body, "all:GestioneAppartamenti_Send")
-
-            ET.SubElement(gestione, "all:Utente").text = utente
-            ET.SubElement(gestione, "all:token").text = token
-
-            elenco = ET.SubElement(gestione, "all:ElencoSchedine")
-            for schedina in elenco_schedine:
-                ET.SubElement(elenco, "all:string").text = schedina
-
-            ET.SubElement(gestione, "all:IdAppartamento").text = str(id_appartamento)
-
-            xml_data = ET.tostring(root, encoding='utf-8', xml_declaration=True)
-
-            # XML Validation
-            xsd_file_path = os.path.join(settings.TEMPLATES[0]['DIRS'][0], 'xsdValidationScheme', 'scheme.xsd')
-            with open(xsd_file_path, 'r') as xsd_file:
-                schema_root = etree.XML(xsd_file.read())
-                schema = etree.XMLSchema(schema_root)
-                xml_doc = etree.fromstring(xml_data)
-                schema.assertValid(xml_doc)
-
-            # Send XML
-            url = "DMS_URL"
-            headers = {'Content-Type': 'application/xml'}
-            response = requests.post(url, data=xml_data, headers=headers)
-
-            response.raise_for_status()
-            return Response({"message": "Data sent successfully"}, status=status.HTTP_200_OK)
-
-        except etree.DocumentInvalid as e:
-            return Response({"error": f"Invalid XML: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-        except requests.exceptions.RequestException as e:
-            return Response({"error": f"Error while sending data: {str(e)}"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except Exception as e:
-            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class AuthenticationTestAPIView(APIView):
     """
     API View to test the validity of an authentication token with the Alloggiati Web service.
@@ -1204,7 +1137,8 @@ class AuthenticationTestAPIView(APIView):
             response_content = send_soap_request(soap_request)
 
             # Parse and return the SOAP response
-            response_data = parse_soap_response(response_content, 'all', ['esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio'])
+            response_data = parse_soap_response(response_content, 'all',
+                                                ['esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio'])
             return Response(response_data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
@@ -1237,3 +1171,68 @@ class AuthenticationTestAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+class SendElencoSchedineAPIView(APIView):
+    """
+    API View to send the Elenco Schedine to the DMS.
+    """
+    serializer_class = SendElencoSchedineSerializer
+
+    def post(self, request):
+        """
+        Handles POST requests to validate and send the Elenco Schedine.
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            data = serializer.validated_data
+            structure_id = data.get('utente')
+            elenco_schedine = [schedina for schedina in data['elenco_schedine']]
+
+            # Retrieve or generate a valid token
+            token_info = get_or_create_token(structure_id)
+
+            # Build the SOAP request
+            body_content = {
+                'Utente': ('{AlloggiatiService}Utente', data['utente']),
+                'token': ('{AlloggiatiService}token', token_info.token),
+            }
+
+            elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
+            for schedina in elenco_schedine:
+                schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
+                schedina_element.text = schedina
+            body_content['ElencoSchedine'] = (
+                '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement).decode('utf-8')
+            )
+
+            soap_request = build_soap_envelope(
+                action='{AlloggiatiService}Send',
+                body_content=body_content
+            )
+
+            # Send the SOAP request
+            response_content = send_soap_request(soap_request)
+
+            # Parse and return the SOAP response
+            response_data = parse_soap_response(
+                response_content,
+                'all',
+                ['Esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio']
+            )
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"error": "Structure or Token not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except ET.ParseError as e:
+            return Response({"error": "Invalid SOAP response format"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        except Exception as e:
+            return Response({"error": f"An unexpected error occurred: {str(e)}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
