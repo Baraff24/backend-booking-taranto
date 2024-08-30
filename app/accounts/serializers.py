@@ -351,7 +351,6 @@ class SchedinaSerializer(serializers.Serializer):
     tipo_documento = serializers.CharField(max_length=5)
     numero_documento = serializers.CharField(max_length=20)
     luogo_rilascio_documento = serializers.CharField(max_length=9)
-    id_appartamento = serializers.CharField(max_length=6)
 
     def to_representation(self, instance):
         """
@@ -372,7 +371,6 @@ class SchedinaSerializer(serializers.Serializer):
             f"{instance['tipo_documento'].ljust(5)}"
             f"{instance['numero_documento'].ljust(20)}"
             f"{instance['luogo_rilascio_documento'].ljust(9)}"
-            f"{instance['id_appartamento'].zfill(6)}"
         ).upper()
 
 
