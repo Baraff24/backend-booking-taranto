@@ -20,6 +20,7 @@ WORKDIR /app
 COPY ./scripts /scripts/
 COPY ./app .
 COPY ./templates /templates/
+COPY ./initial_data /initial_data/
 
 ENTRYPOINT ["/scripts/docker/wait-for-it.sh", "database:5432" , "-s", "--"]
 CMD ["/scripts/docker/starter.sh"]
