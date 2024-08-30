@@ -246,12 +246,12 @@ class CheckinCategoryChoices(models.Model):
     Model representing the checkin category choices.
     Fields:
     - category: Category of the checkin
-    - nome: Name of the checkin category choice
     - codice: Code for the checkin category choice
+    - descrizione: Description of the checkin category choice
     """
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
-    nome = models.CharField(max_length=100)
     codice = models.CharField(max_length=10, blank=True, null=True)
+    descrizione = models.CharField(max_length=100)
 
     def __str__(self):
-        return f"{self.nome} ({self.codice}) - {self.category}"
+        return f"{self.descrizione} ({self.codice}) - {self.category}"
