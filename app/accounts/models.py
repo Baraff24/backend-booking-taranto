@@ -7,7 +7,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 from .constants import (STATUS_CHOICES, PENDING_COMPLETE_DATA, TYPE_VALUES,
-                        CUSTOMER, ROOM_STATUS, AVAILABLE, STATUS_RESERVATION, UNPAID)
+                        CUSTOMER, ROOM_STATUS, AVAILABLE, STATUS_RESERVATION, UNPAID, CATEGORY_CHOICES)
 
 
 class User(AbstractUser):
@@ -239,3 +239,19 @@ class TokenInfoAllogiatiWeb(models.Model):
 
     def __str__(self):
         return "Token Info for Allogiati Web"
+
+
+class CheckinCategoryChoices(models.Model):
+    """
+    Model representing the checkin category choices.
+    Fields:
+    - category: Category of the checkin
+    - nome: Name of the checkin category choice
+    - codice: Code for the checkin category choice
+    """
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    nome = models.CharField(max_length=100)
+    codice = models.CharField(max_length=10, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.nome} ({self.codice}) - {self.category}"

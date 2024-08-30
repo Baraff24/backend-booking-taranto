@@ -13,13 +13,13 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         get_or_create_token, build_soap_envelope,
                         send_soap_request)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
-    UserAllogiatiWeb
+    UserAllogiatiWeb, CheckinCategoryChoices
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
-                          AuthenticationTestSerializer, SendElencoSchedineSerializer)
+                          AuthenticationTestSerializer, SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -1094,7 +1094,7 @@ class CancelReservationAPI(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class AuthenticationTestAPIView(APIView):
+class AuthenticationTestAPI(APIView):
     """
     API View to test the validity of an authentication token with the Alloggiati Web service.
     """
@@ -1168,12 +1168,14 @@ class AuthenticationTestAPIView(APIView):
             )
 
 
-class SendElencoSchedineAPIView(APIView):
+class SendElencoSchedineAPI(APIView):
     """
     API View to send the Elenco Schedine to the DMS.
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = SendElencoSchedineSerializer
 
+    @method_decorator(is_active)
     def post(self, request, *args, **kwargs):
         """
         Handles POST requests to validate and send the Elenco Schedine.
@@ -1233,3 +1235,29 @@ class SendElencoSchedineAPIView(APIView):
         except Exception as e:
             return Response({"error": f"An unexpected error occurred: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CheckinCategoryChoicesAPI(APIView):
+    """
+    API View to return check-in category choices.
+    If a 'category' parameter is provided, it returns choices for that specific category.
+    If no parameter is provided, it returns all choices across all categories.
+    """
+    serializer_class = CheckinCategoryChoicesSerializer
+
+    def get(self, request):
+        category = request.query_params.get('category', None)
+
+        if category:
+            # If category is provided, filter by category
+            choices = CheckinCategoryChoices.objects.filter(category=category)
+            if not choices.exists():
+                return Response({"error": f"No choices found for category '{category}'."},
+                                status=status.HTTP_404_NOT_FOUND)
+        else:
+            # If no category is provided, return all choices
+            choices = CheckinCategoryChoices.objects.all()
+
+        # Serialize the results
+        serializer = self.serializer_class(choices, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

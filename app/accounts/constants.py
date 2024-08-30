@@ -22,6 +22,14 @@ UNPAID = 'UNPAID'
 PAID = 'PAID'
 CANCELED = 'CANCELED'
 
+# CATEGORY_CHOICES VALUES
+TIPO_ALLOGGIATO = 'tipo_alloggiato'
+COMUNE_DI_NASCITA = 'comune_di_nascita'
+STATO_NASCITA = 'stato_di_nascita'
+CITTADINANZA = 'cittadinanza'
+TIPO_DOCUMENTO = 'tipo_documento'
+LUOGO_RILASCIO_DOCUMENTO = 'luogo_rilascio_documento'
+
 STATUS_CHOICES = (
     (COMPLETE, 'Complete'),
     (PENDING_COMPLETE_DATA, 'Pending Complete Data'),
@@ -42,4 +50,13 @@ STATUS_RESERVATION = (
     (UNPAID, 'Unpaid'),
     (PAID, 'Paid'),
     (CANCELED, 'Canceled'),
+)
+
+CATEGORY_CHOICES = (
+    (TIPO_ALLOGGIATO, 'Tipo Alloggiato'),
+    (COMUNE_DI_NASCITA, 'Comune di Nascita'),
+    (STATO_NASCITA, 'Stato di Nascita'),
+    (CITTADINANZA, 'Cittadinanza'),
+    (TIPO_DOCUMENTO, 'Tipo Documento'),
+    (LUOGO_RILASCIO_DOCUMENTO, 'Luogo Rilascio Documento'),
 )

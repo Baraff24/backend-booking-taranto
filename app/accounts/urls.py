@@ -7,12 +7,12 @@ from rest_framework.routers import DefaultRouter
 from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     StructureViewSet, RoomViewSet, ReservationViewSet,
                     DiscountViewSet, GoogleCalendarInitAPI, GoogleCalendarRedirectAPI,
-                    RentRoomAPI, StripeWebhook, SendElencoSchedineAPIView,
+                    RentRoomAPI, StripeWebhook, SendElencoSchedineAPI,
                     CreateCheckoutSessionLinkAPI, AddAdminTypeUserAPI, CreateStructureAPI,
                     AddStructureImageAPI, GetStructureImagesAPI, AvailableRoomsForDatesAPI,
-                    DeleteStructureImageAPI, CancelReservationAPI,
+                    DeleteStructureImageAPI, CancelReservationAPI, CheckinCategoryChoicesAPI,
                     RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI,
-                    GetRoomImagesAPI, AddRoomImageAPI, DeleteRoomImageAPI, AuthenticationTestAPIView)
+                    GetRoomImagesAPI, AddRoomImageAPI, DeleteRoomImageAPI, AuthenticationTestAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -43,8 +43,9 @@ urlpatterns = [
     path('discount/calculate-discount/', CalculateDiscountAPI.as_view(), name='calculate-discount'),
     path('stripe/create-checkout-session/', CreateCheckoutSessionLinkAPI.as_view(), name='create-checkout-session'),
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
-    path('auth-test-alloggiati-web/', AuthenticationTestAPIView.as_view(), name='auth-test'),
-    path('send-elenco-schedine/', SendElencoSchedineAPIView.as_view(), name='send-elenco-schedine'),
+    path('checkin-category-choices/', CheckinCategoryChoicesAPI.as_view(), name='checkin-category-choices'),
+    path('auth-test-alloggiati-web/', AuthenticationTestAPI.as_view(), name='auth-test'),
+    path('send-elenco-schedine/', SendElencoSchedineAPI.as_view(), name='send-elenco-schedine'),
     path('stripe-webhook/', StripeWebhook.as_view(), name='stripe-webhook'),
     path('', include(router.urls)),
 ]

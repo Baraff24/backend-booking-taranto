@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
 from .models import (User, Structure, Room, Reservation, Discount,
-                     StructureImage, RoomImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb)
+                     StructureImage, RoomImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb, CheckinCategoryChoices)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -411,3 +411,13 @@ class SendElencoSchedineSerializer(serializers.Serializer):
 
         # Additional cross-field validations can go here if needed
         return data
+
+
+class CheckinCategoryChoicesSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the CheckinCategoryChoices model.
+    """
+
+    class Meta:
+        model = CheckinCategoryChoices
+        fields = '__all__'

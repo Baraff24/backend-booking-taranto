@@ -13,4 +13,10 @@ echo -e "\e[34m >>> Tests for accounts app \e[97m"
 python manage.py test accounts
 echo -e "\e[32m >>> Tests completed \e[97m"
 
+echo -e "\e[34m >>> Adding category choices for the check-in process \e[97m"
+python manage.py import_category_choices_csv comuni initial_data/category_choices_csv/comuni.csv
+python manage.py import_category_choices_csv documenti initial_data/category_choices_csv/documenti.csv
+python manage.py import_category_choices_csv stati initial_data/category_choices_csv/stati.csv
+python manage.py import_category_choices_csv tipo_alloggiato initial_data/category_choices_csv/tipo_alloggiato.csv
+
 gunicorn core.asgi --bind 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker --timeout 20 --workers=2
