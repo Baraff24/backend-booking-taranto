@@ -32,8 +32,8 @@ class Command(BaseCommand):
             for row in reader:
                 new_entries.append(CheckinCategoryChoices(
                     category=category,
-                    descrizione=row['descrizione'],
-                    codice=row.get('codice', '')
+                    descrizione=row['Descrizione'],
+                    codice=row.get('Codice', '')
                 ))
 
         if new_entries:
