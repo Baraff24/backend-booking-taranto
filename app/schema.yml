@@ -4,6 +4,34 @@ info:
   version: 1.0.0
   description: GM Apartments Booking Taranto APIs
 paths:
+  /api/v1/accounts/auth-test-alloggiati-web/:
+    post:
+      operationId: accounts_auth_test_alloggiati_web_create
+      description: Handles POST requests to validate an authentication token.
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationTest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthenticationTest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthenticationTest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationTest'
+          description: ''
   /api/v1/accounts/cancel-reservation/:
     post:
       operationId: accounts_cancel_reservation_create
@@ -23,15 +51,32 @@ paths:
               $ref: '#/components/schemas/CancelReservation'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CancelReservation'
+          description: ''
+  /api/v1/accounts/checkin-category-choices/:
+    get:
+      operationId: accounts_checkin_category_choices_retrieve
+      description: |-
+        API View to return check-in category choices.
+        If a 'category' parameter is provided, it returns choices for that specific category.
+        If no parameter is provided, it returns all choices across all categories.
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckinCategoryChoices'
           description: ''
   /api/v1/accounts/discount/calculate-discount/:
     post:
@@ -52,9 +97,7 @@ paths:
               $ref: '#/components/schemas/CalculateDiscount'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -96,9 +139,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -127,9 +168,7 @@ paths:
               $ref: '#/components/schemas/Discount'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '201':
@@ -152,9 +191,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -188,9 +225,7 @@ paths:
               $ref: '#/components/schemas/Discount'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -223,9 +258,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedDiscount'
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -247,51 +280,18 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '204':
           description: No response body
-  /api/v1/accounts/generate-xml-and-send-to-dms/:
-    post:
-      operationId: accounts_generate_xml_and_send_to_dms_create
-      description: Generate an XML file and send it to a DMS
-      tags:
-      - accounts
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenerateXmlAndSendToDms'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/GenerateXmlAndSendToDms'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/GenerateXmlAndSendToDms'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenerateXmlAndSendToDms'
-          description: ''
   /api/v1/accounts/google-calendar/init/:
     get:
       operationId: accounts_google_calendar_init_retrieve
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           description: No response body
@@ -301,9 +301,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -356,9 +354,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -386,9 +382,7 @@ paths:
               $ref: '#/components/schemas/Reservation'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '201':
           content:
@@ -410,9 +404,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -445,9 +437,7 @@ paths:
               $ref: '#/components/schemas/Reservation'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -479,9 +469,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedReservation'
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -502,38 +490,17 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '204':
           description: No response body
-  /api/v1/accounts/room/available-room/:
-    get:
-      operationId: accounts_room_available_room_retrieve
-      tags:
-      - accounts
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AvailableRoomsForDates'
-          description: ''
   /api/v1/accounts/room/available-rooms-for-dates/:
     get:
       operationId: accounts_room_available_rooms_for_dates_retrieve
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -561,9 +528,7 @@ paths:
               $ref: '#/components/schemas/Room'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -590,9 +555,7 @@ paths:
               $ref: '#/components/schemas/Reservation'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -632,9 +595,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -663,9 +624,7 @@ paths:
               $ref: '#/components/schemas/Room'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '201':
@@ -688,9 +647,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -724,9 +681,7 @@ paths:
               $ref: '#/components/schemas/Room'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -759,9 +714,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedRoom'
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -783,9 +736,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '204':
@@ -803,9 +754,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -839,9 +788,7 @@ paths:
               $ref: '#/components/schemas/RoomImage'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -862,12 +809,37 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '204':
           description: No response body
+  /api/v1/accounts/send-elenco-schedine/:
+    post:
+      operationId: accounts_send_elenco_schedine_create
+      description: Handles POST requests to validate and send the Elenco Schedine.
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendElencoSchedine'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendElencoSchedine'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendElencoSchedine'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendElencoSchedine'
+          description: ''
   /api/v1/accounts/stripe-webhook/:
     post:
       operationId: accounts_stripe_webhook_create
@@ -875,9 +847,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -901,9 +871,7 @@ paths:
               $ref: '#/components/schemas/CreateCheckoutSession'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -930,9 +898,7 @@ paths:
               $ref: '#/components/schemas/Structure'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -968,9 +934,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -999,9 +963,7 @@ paths:
               $ref: '#/components/schemas/StructureRoom'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '201':
@@ -1024,9 +986,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1060,9 +1020,7 @@ paths:
               $ref: '#/components/schemas/StructureRoom'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1095,9 +1053,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStructureRoom'
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1119,9 +1075,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '204':
@@ -1139,9 +1093,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1175,9 +1127,7 @@ paths:
               $ref: '#/components/schemas/StructureImage'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1198,9 +1148,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '204':
           description: No response body
@@ -1211,9 +1159,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1234,9 +1180,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1268,9 +1212,7 @@ paths:
               $ref: '#/components/schemas/User'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1292,9 +1234,7 @@ paths:
       tags:
       - accounts
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '204':
           description: No response body
@@ -1320,9 +1260,7 @@ paths:
               $ref: '#/components/schemas/Email'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1348,9 +1286,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CompleteProfile'
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
@@ -1380,52 +1316,13 @@ paths:
               $ref: '#/components/schemas/Email'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Email'
-          description: ''
-  /api/v1/auth/login/:
-    post:
-      operationId: auth_login_create
-      description: |-
-        Check the credentials and return the REST Token
-        if the credentials are valid and authenticated.
-        Calls Django Auth login method to register User ID
-        in Django session framework
-
-        Accept the following POST parameters: username, password
-        Return the REST Framework Token Object's key.
-      tags:
-      - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Login'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Login'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Login'
-        required: true
-      security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
-      - {}
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Token'
           description: ''
   /api/v1/auth/logout/:
     post:
@@ -1438,9 +1335,7 @@ paths:
       tags:
       - auth
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1472,9 +1367,7 @@ paths:
               $ref: '#/components/schemas/PasswordReset'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1519,9 +1412,7 @@ paths:
               $ref: '#/components/schemas/PasswordResetConfirm'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1548,9 +1439,7 @@ paths:
               $ref: '#/components/schemas/Register'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '201':
@@ -1577,9 +1466,7 @@ paths:
               $ref: '#/components/schemas/ResendEmailVerification'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '201':
@@ -1606,9 +1493,7 @@ paths:
               $ref: '#/components/schemas/VerifyEmail'
         required: true
       security:
-      - basicAuth: []
-      - cookieAuth: []
-      - tokenAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -1617,8 +1502,96 @@ paths:
               schema:
                 $ref: '#/components/schemas/RestAuthDetail'
           description: ''
+  /api/v1/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenObtainPair'
+          description: ''
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/token/verify/:
+    post:
+      operationId: auth_token_verify_create
+      description: |-
+        Takes a token and indicates if it is valid.  This view provides no
+        information about a token's fitness for a particular use.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerify'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerify'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenVerify'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenVerify'
+          description: ''
 components:
   schemas:
+    AuthenticationTest:
+      type: object
+      properties:
+        structure_id:
+          type: integer
+      required:
+      - structure_id
     AvailableRoomsForDates:
       type: object
       description: Serializer for rooms available for specific dates.
@@ -1673,6 +1646,42 @@ components:
           format: uuid
       required:
       - reservation_id
+    CategoryEnum:
+      enum:
+      - tipo_alloggiato
+      - comune_di_nascita
+      - stato_di_nascita
+      - cittadinanza
+      - tipo_documento
+      - luogo_rilascio_documento
+      type: string
+      description: |-
+        * `tipo_alloggiato` - Tipo Alloggiato
+        * `comune_di_nascita` - Comune di Nascita
+        * `stato_di_nascita` - Stato di Nascita
+        * `cittadinanza` - Cittadinanza
+        * `tipo_documento` - Tipo Documento
+        * `luogo_rilascio_documento` - Luogo Rilascio Documento
+    CheckinCategoryChoices:
+      type: object
+      description: Serializer for the CheckinCategoryChoices model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        codice:
+          type: string
+          nullable: true
+          maxLength: 10
+        descrizione:
+          type: string
+          maxLength: 100
+      required:
+      - category
+      - descrizione
+      - id
     CompleteProfile:
       type: object
       description: Serializer for completing a user's profile.
@@ -1696,6 +1705,21 @@ components:
           format: uuid
       required:
       - reservation_id
+    CustomTokenObtainPair:
+      type: object
+      description: |-
+        Custom token serializer to use custom claims.
+        Use email instead of username for authentication.
+      properties:
+        email:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
     Discount:
       type: object
       description: Serializer for the Discount model.
@@ -1748,39 +1772,6 @@ components:
           format: email
       required:
       - email
-    GenerateXmlAndSendToDms:
-      type: object
-      description: Serializer for generating XML and sending it to a DMS.
-      properties:
-        utente:
-          type: string
-          maxLength: 100
-        token:
-          type: string
-          maxLength: 255
-        elenco_schedine:
-          type: array
-          items:
-            $ref: '#/components/schemas/Schedina'
-        id_appartamento:
-          type: integer
-      required:
-      - elenco_schedine
-      - id_appartamento
-      - token
-      - utente
-    Login:
-      type: object
-      properties:
-        username:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-      required:
-      - password
     PasswordReset:
       type: object
       description: Serializer for requesting a password reset e-mail.
@@ -2174,7 +2165,9 @@ components:
         * `UNAVAILABLE` - Unavailable
     Schedina:
       type: object
-      description: Serializer for handling individual guest registration forms (Schedina).
+      description: |-
+        Serializer for handling individual guest registration forms (Schedina).
+        This serializer will create a single string representing the entire schedina.
       properties:
         tipo_alloggiati:
           type: string
@@ -2218,16 +2211,12 @@ components:
         luogo_rilascio_documento:
           type: string
           maxLength: 9
-        id_appartamento:
-          type: string
-          maxLength: 6
       required:
       - cittadinanza
       - cognome
       - comune_nascita
       - data_arrivo
       - data_nascita
-      - id_appartamento
       - luogo_rilascio_documento
       - nome
       - numero_documento
@@ -2237,6 +2226,27 @@ components:
       - stato_nascita
       - tipo_alloggiati
       - tipo_documento
+    SendElencoSchedine:
+      type: object
+      description: Serializer for generating XML and sending it to a DMS.
+      properties:
+        utente:
+          type: string
+          readOnly: true
+        token:
+          type: string
+          readOnly: true
+        elenco_schedine:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedina'
+        structure_id:
+          type: integer
+      required:
+      - elenco_schedine
+      - structure_id
+      - token
+      - utente
     SessoEnum:
       enum:
       - '1'
@@ -2326,15 +2336,25 @@ components:
       - images
       - name
       - rooms
-    Token:
+    TokenRefresh:
       type: object
-      description: Serializer for Token model.
       properties:
-        key:
+        access:
           type: string
-          maxLength: 40
+          readOnly: true
+        refresh:
+          type: string
       required:
-      - key
+      - access
+      - refresh
+    TokenVerify:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+      required:
+      - token
     TypeEnum:
       enum:
       - CUSTOMER
@@ -2431,15 +2451,7 @@ components:
       required:
       - key
   securitySchemes:
-    basicAuth:
+    jwtAuth:
       type: http
-      scheme: basic
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: sessionid
-    tokenAuth:
-      type: apiKey
-      in: header
-      name: Authorization
-      description: Token-based authentication with required prefix "Token"
+      scheme: bearer
+      bearerFormat: JWT
