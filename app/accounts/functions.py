@@ -83,6 +83,28 @@ def is_admin(view_func):
 #####################################################################################
 # FUNCTIONS #
 #####################################################################################
+
+
+def send_account_deletion_email(user):
+    """
+    Send an account deletion confirmation email to the user.
+    """
+    try:
+        context = {
+            'user': user,
+            'current_year': timezone.now().year,
+        }
+        subject = 'Conferma di cancellazione del tuo account'
+        html_message = get_template('account/email/confirm_account_delete.html').render(context)
+        plain_message = strip_tags(html_message)
+        from_email = EMAIL  # Replace with your actual 'from' email address or settings.EMAIL_HOST_USER
+        to_email = user.email
+
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+    except Exception as e:
+        print(f"Failed to send account deletion email: {str(e)}")
+
+
 def handle_checkout_session_completed(session):
     """
     Function to handle checkout session completed event from Stripe

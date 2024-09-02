@@ -11,7 +11,7 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         cancel_reservation_and_remove_event,
                         is_room_available, handle_checkout_session_completed, parse_soap_response,
                         get_or_create_token, build_soap_envelope,
-                        send_soap_request)
+                        send_soap_request, send_account_deletion_email)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
     UserAllogiatiWeb, CheckinCategoryChoices
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
@@ -121,13 +121,27 @@ class UserDetailAPI(APIView):
         """
         Delete the user instance by primary key.
         It is not a physical delete, but a logical delete (change of status).
+        The user can only delete their profile if they have no active reservations.
         """
         obj = self.get_object(pk)
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        # if obj.id == request.user.id or request.user.is_superuser:
-        if request.user.is_superuser:
+
+        active_reservations = Reservation.objects.filter(
+            user=obj,
+            status__in=[PAID],
+            check_out__gt=timezone.now()
+        ).exists()
+
+        if active_reservations:
+            return Response(
+                {'error': 'You cannot delete your profile while you have active bookings.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if obj.id == request.user.id or request.user.is_superuser:
             obj.is_active = False
+            send_account_deletion_email(obj)
             obj.save()
             return Response(status=status.HTTP_200_OK)
 
