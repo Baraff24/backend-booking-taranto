@@ -30,9 +30,16 @@ class Command(BaseCommand):
         with open(file_path, mode='r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
+
+                # Combine 'Descrizione' and 'Provincia' with a hyphen, handling missing values gracefully
+                descrizione = row['Descrizione']
+                provincia = row.get('Provincia', '').strip()
+                if provincia:
+                    descrizione = f"{descrizione} - {provincia}"
+
                 new_entries.append(CheckinCategoryChoices(
                     category=category,
-                    descrizione=row['Descrizione'],
+                    descrizione=descrizione,
                     codice=row.get('Codice', '')
                 ))
 
