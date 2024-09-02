@@ -11,7 +11,7 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         cancel_reservation_and_remove_event,
                         is_room_available, handle_checkout_session_completed, parse_soap_response,
                         get_or_create_token, build_soap_envelope,
-                        send_soap_request, send_account_deletion_email)
+                        send_soap_request, send_account_deletion_email, WhatsAppService)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
     UserAllogiatiWeb, CheckinCategoryChoices
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
@@ -19,7 +19,8 @@ from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSe
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
-                          AuthenticationTestSerializer, SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer)
+                          AuthenticationTestSerializer, SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer,
+                          SendWhatsAppToAllUsersSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -141,7 +142,17 @@ class UserDetailAPI(APIView):
 
         if obj.id == request.user.id or request.user.is_superuser:
             obj.is_active = False
+
+            # Send email to the user
             send_account_deletion_email(obj)
+
+            # Send whatsapp message to the user
+            whatsapp_service = WhatsAppService()
+            whatsapp_service.send_message(
+                obj.telephone,
+                'Your account has been deleted.'
+            )
+
             obj.save()
             return Response(status=status.HTTP_200_OK)
 
@@ -1096,6 +1107,8 @@ class CancelReservationAPI(APIView):
 
             cancel_reservation_and_remove_event(reservation)
 
+            # Send Whatsapp message
+
             return Response({
                 'message': 'Reservation canceled and refund processed successfully.',
             }, status=status.HTTP_200_OK)
@@ -1112,8 +1125,11 @@ class AuthenticationTestAPI(APIView):
     """
     API View to test the validity of an authentication token with the Alloggiati Web service.
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = AuthenticationTestSerializer
 
+    @is_active
+    @is_admin
     def post(self, request):
         """
         Handles POST requests to validate an authentication token.
@@ -1257,8 +1273,10 @@ class CheckinCategoryChoicesAPI(APIView):
     If a 'category' parameter is provided, it returns choices for that specific category.
     If no parameter is provided, it returns all choices across all categories.
     """
+    permission_classes = [IsAuthenticated]
     serializer_class = CheckinCategoryChoicesSerializer
 
+    @is_active
     def get(self, request):
         category = request.query_params.get('category', None)
 
@@ -1275,3 +1293,46 @@ class CheckinCategoryChoicesAPI(APIView):
         # Serialize the results
         serializer = self.serializer_class(choices, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class SendWhatsAppToAllUsersAPIView(APIView):
+    """
+    API View to send a WhatsApp message to all users on the site.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = SendWhatsAppToAllUsersSerializer
+
+    @is_active
+    @is_admin
+    def post(self, request):
+        """
+        Handles POST requests to send a WhatsApp message to all users.
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        message = serializer.validated_data['message']
+        whatsapp_service = WhatsAppService()
+        failed_users = []
+        successful_jobs = []
+
+        # Retrieve all users with a valid phone number
+        users = User.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact='')
+
+        for user in users:
+            job_id = whatsapp_service.queue_message(user.phone_number, message)
+            if job_id:
+                successful_jobs.append({"user": user.id, "job_id": job_id})
+            else:
+                failed_users.append({"user": user.id, "phone_number": user.phone_number})
+
+        if failed_users:
+            return Response({
+                "message": "Some messages could not be queued.",
+                "failed_users": failed_users,
+                "successful_jobs": successful_jobs
+            }, status=status.HTTP_207_MULTI_STATUS)
+
+        return Response({"message": "Messages queued successfully.", "successful_jobs": successful_jobs},
+                        status=status.HTTP_200_OK)

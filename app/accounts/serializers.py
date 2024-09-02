@@ -421,3 +421,12 @@ class CheckinCategoryChoicesSerializer(serializers.ModelSerializer):
     class Meta:
         model = CheckinCategoryChoices
         fields = '__all__'
+
+
+class WhatsAppMessageSerializer(serializers.Serializer):
+    user_phone_number = serializers.CharField(max_length=15)
+    message = serializers.CharField(max_length=4096)  # WhatsApp messages have a 4096 character limit
+
+
+class SendWhatsAppToAllUsersSerializer(serializers.Serializer):
+    message = serializers.CharField(max_length=4096)  # WhatsApp messages have a 4096 character limit

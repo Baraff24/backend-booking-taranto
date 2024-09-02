@@ -13,6 +13,9 @@ echo -e "\e[34m >>> Tests for accounts app \e[97m"
 python manage.py test accounts
 echo -e "\e[32m >>> Tests completed \e[97m"
 
+echo -e "\e[32m >>> Starting rq worker \e[97m"
+python manage.py rq_worker &
+
 echo -e "\e[34m >>> Adding category choices for the check-in process \e[97m"
 python manage.py import_category_choices_csv comune_di_nascita initial_data/category_choices_csv/comuni.csv
 python manage.py import_category_choices_csv tipo_documento initial_data/category_choices_csv/documenti.csv

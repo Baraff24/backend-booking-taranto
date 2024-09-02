@@ -4,9 +4,10 @@ This file contains all the functions and decorators used in the accounts app.
 import xml.etree.ElementTree as ET
 import json
 from datetime import timedelta, datetime
+from urllib.parse import urlparse
+
 import django.contrib.auth
 from functools import wraps
-
 import requests
 from decouple import config
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -18,17 +19,22 @@ from django.template.loader import get_template
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.html import strip_tags
+from redis import Redis
 from requests import RequestException
 from rest_framework import status
 from rest_framework.response import Response
+from rq import Queue
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from allauth.account.models import EmailAddress
+from twilio.rest import Client
 
-from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED, ALLOGGIATI_WEB_URL
+from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
 from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAllogiatiWeb, TokenInfoAllogiatiWeb
 from accounts.serializers import ReservationSerializer
+from config.settings.base import (TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID,
+                                  ALLOGGIATI_WEB_URL, TWILIO_NUMBER, REDIS_BACKEND, OWNER_PHONE_NUMBER)
 
 User = django.contrib.auth.get_user_model()
 EMAIL = config('EMAIL_HOST_USER', '')
@@ -105,6 +111,201 @@ def send_account_deletion_email(user):
         print(f"Failed to send account deletion email: {str(e)}")
 
 
+def get_redis_connection_and_queue():
+    """
+    Parses the REDIS_BACKEND URL and returns a Redis connection and RQ queue.
+    """
+    redis_url = urlparse(REDIS_BACKEND)
+
+    redis_conn = Redis(
+        host=redis_url.hostname,
+        port=redis_url.port,
+        db=int(redis_url.path.lstrip('/')),
+        password=redis_url.password
+    )
+    queue = Queue(connection=redis_conn)
+    return redis_conn, queue
+
+
+class WhatsAppService:
+    def __init__(self):
+        self.client = Client(
+            TWILIO_ACCOUNT_SID,
+            TWILIO_AUTH_TOKEN
+        )
+        self.from_whatsapp_number = TWILIO_NUMBER
+
+    def send_message(self, to_number, message):
+        """
+        Send a WhatsApp message immediately.
+
+        Args:
+            to_number (str): The recipient's phone number in E.164 format.
+            message (str): The message to be sent.
+
+        Returns:
+            str: The SID of the sent message or None if failed.
+        """
+        try:
+            msg = self.client.messages.create(
+                body=message,
+                from_=f'whatsapp:{self.from_whatsapp_number}',
+                to=f'whatsapp:{to_number}'
+            )
+            return msg.sid
+        except Exception as e:
+            # Log the exception here
+            print(f"Failed to send WhatsApp message: {str(e)}")
+            return None
+
+    def queue_message(self, to_number, message):
+        """
+        Queue a WhatsApp message to be sent later via Redis.
+
+        Args:
+            to_number (str): The recipient's phone number in E.164 format.
+            message (str): The message to be sent.
+
+        Returns:
+            str: The job ID of the queued task.
+        """
+        try:
+            # Get the Redis connection and queue
+            _, queue = get_redis_connection_and_queue()
+
+            # Enqueue the send_message function with its arguments
+            job = queue.enqueue(self.send_message, to_number, message)
+            return job.id
+        except Exception as e:
+            # Log the exception here
+            print(f"Failed to queue WhatsApp message: {str(e)}")
+            return None
+
+
+def send_confirmation_checkout_session_completed(reservation):
+    """
+    Sends a WhatsApp message to both the user and the owner when the booking is confirmed.
+
+    Args:
+        reservation (Reservation): The reservation instance that was confirmed.
+
+    Returns:
+        tuple: The job IDs of the queued WhatsApp message tasks for the user and the owner, or (None, None) if failed.
+    """
+    try:
+        whatsapp_service = WhatsAppService()
+
+        # Construct the detailed message for the user
+        guest_message = (
+            f"Gentile {reservation.user.first_name},\n\n"
+            f"La tua prenotazione con ID {reservation.id} è stata confermata con successo!\n"
+            f"Dettagli della prenotazione:\n"
+            f"- Nome: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
+            f"- Email: {reservation.email_on_reservation}\n"
+            f"- Telefono: {reservation.phone_on_reservation}\n"
+            f"- Struttura: {reservation.room.structure.name}\n"
+            f"- Stanza: {reservation.room.name}\n"
+            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
+            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
+            f"Non vediamo l'ora di accoglierti!\n\n"
+            f"Distinti saluti,\n"
+            f"Il Team"
+        )
+
+        # Construct the detailed message for the owner
+        owner_message = (
+            f"Ciao,\n\n"
+            f"Una nuova prenotazione è stata confermata con i seguenti dettagli:\n"
+            f"- Ospite: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
+            f"- Email: {reservation.email_on_reservation}\n"
+            f"- Telefono: {reservation.phone_on_reservation}\n"
+            f"- Struttura: {reservation.room.structure.name}\n"
+            f"- Stanza: {reservation.room.name}\n"
+            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
+            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
+            f"Distinti saluti,\n"
+            f"Il Team"
+        )
+
+        # Queue the WhatsApp message
+        job_id = whatsapp_service.queue_message(reservation.user.phone_number, guest_message)
+        owner_job_id = whatsapp_service.queue_message(OWNER_PHONE_NUMBER, owner_message)
+
+        if job_id and owner_job_id:
+            print(f"WhatsApp message queued successfully with job ID: {job_id}")
+            return job_id, owner_job_id
+        else:
+            print("Failed to queue the WhatsApp message.")
+            return None
+
+    except Exception as e:
+        # Log the exception here
+        print(f"Failed to send WhatsApp confirmation message: {str(e)}")
+        return None
+
+
+def send_cancel_reservation_whatsapp_message(reservation):
+    """
+    Sends a WhatsApp message to both the user and the owner when the reservation is canceled.
+
+    Args:
+        reservation (Reservation): The reservation instance that was canceled.
+
+    Returns:
+        tuple: The job IDs of the queued WhatsApp message tasks for the user and the owner, or (None, None) if failed.
+    """
+    try:
+        whatsapp_service = WhatsAppService()
+
+        # Construct the message for the user
+        guest_message = (
+            f"Gentile {reservation.user.first_name},\n\n"
+            f"La tua prenotazione con ID {reservation.id} è stata annullata con successo.\n"
+            f"Dettagli della prenotazione:\n"
+            f"- Nome: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
+            f"- Email: {reservation.email_on_reservation}\n"
+            f"- Telefono: {reservation.phone_on_reservation}\n"
+            f"- Struttura: {reservation.room.structure.name}\n"
+            f"- Stanza: {reservation.room.name}\n"
+            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
+            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
+            f"Per ulteriore assistenza, non esitare a contattarci.\n\n"
+            f"Distinti saluti,\n"
+            f"Il Team"
+        )
+
+        # Construct the message for the owner
+        owner_message = (
+            f"Ciao,\n\n"
+            f"La seguente prenotazione è stata annullata:\n"
+            f"- Ospite: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
+            f"- Email: {reservation.email_on_reservation}\n"
+            f"- Telefono: {reservation.phone_on_reservation}\n"
+            f"- Struttura: {reservation.room.structure.name}\n"
+            f"- Stanza: {reservation.room.name}\n"
+            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
+            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
+            f"Distinti saluti,\n"
+            f"Il Team"
+        )
+
+        # Queue the WhatsApp message
+        job_id = whatsapp_service.queue_message(reservation.user.phone_number, guest_message)
+        owner_job_id = whatsapp_service.queue_message(OWNER_PHONE_NUMBER, owner_message)
+
+        if job_id and owner_job_id:
+            print(f"WhatsApp message queued successfully with job ID: {job_id}")
+            return job_id, owner_job_id
+        else:
+            print("Failed to queue the WhatsApp message.")
+            return None
+
+    except Exception as e:
+        # Log the exception here
+        print(f"Failed to send WhatsApp cancellation message: {str(e)}")
+        return None
+
+
 def handle_checkout_session_completed(session):
     """
     Function to handle checkout session completed event from Stripe
@@ -127,8 +328,11 @@ def handle_checkout_session_completed(session):
         reservation.status = PAID
         reservation.save()
 
-        # Optionally, send a confirmation email or update Google Calendar, etc.
+        # Send a confirmation email
         send_payment_confirmation_email(reservation)
+
+        # Send a WhatsApp message
+        send_confirmation_checkout_session_completed(reservation)
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
@@ -217,8 +421,14 @@ def cancel_reservation_and_remove_event(reservation):
     """
     Cancel the reservation and remove the corresponding event from Google Calendar
     """
-    cancel_reservation_and_remove_event(reservation)
     reservation.status = CANCELED
+
+    # Send a cancel reservation email
+    send_cancel_reservation_email(reservation)
+
+    # Send a WhatsApp message
+    send_cancel_reservation_whatsapp_message(reservation)
+
     reservation.save()
 
     try:
@@ -612,7 +822,8 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
             schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
             schedina_element.text = schedina
         body_content['ElencoSchedine'] = (
-            '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement).decode('utf-8'))
+            '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement).decode('utf-8')
+        )
 
         xml_request = build_soap_envelope('{AlloggiatiService}Test', body_content)
         response_content = send_soap_request(xml_request)

@@ -6,6 +6,8 @@ import os
 from decouple import config, Csv
 from datetime import timedelta
 
+from drf_spectacular.utils import OpenApiWebhook
+
 # Use decouple to use environment variables
 
 SECRET_KEY = config('SECRET_KEY')
@@ -96,10 +98,14 @@ DATABASES = {
     }
 }
 
+
+# Redis configuration
+REDIS_BACKEND = config('REDIS_BACKEND', default='redis://redis:6379/0')
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': config('REDIS_BACKEND', default='redis://redis:6379/0'),
+        'LOCATION': REDIS_BACKEND,
     }
 }
 
@@ -241,3 +247,14 @@ GOOGLE_REDIRECT_URI = 'https://' + DJANGO_BACKEND_URL + '/api/v1/accounts/google
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
+
+# URL of the SOAP service for Alloggiati Web
+ALLOGGIATI_WEB_URL = 'https://alloggiatiweb.poliziadistato.it/service/service.asmx'
+
+# Twilio settings
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_NUMBER = config('TWILIO_NUMBER', default='')
+
+# Telephone number of the owner that need the notification message from whatsapp
+OWNER_PHONE_NUMBER = config('OWNER_PHONE_NUMBER', default='')

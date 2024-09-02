@@ -24,7 +24,6 @@ paths:
         required: true
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -70,7 +69,6 @@ paths:
       - accounts
       security:
       - jwtAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -1225,6 +1223,7 @@ paths:
       description: |-
         Delete the user instance by primary key.
         It is not a physical delete, but a logical delete (change of status).
+        The user can only delete their profile if they have no active reservations.
       parameters:
       - in: path
         name: id
