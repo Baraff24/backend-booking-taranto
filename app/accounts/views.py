@@ -121,7 +121,7 @@ class UserDetailAPI(APIView):
     def delete(self, request, pk):
         """
         Delete the user instance by primary key.
-        It is not a physical delete, but a logical delete (change of status).
+        It is a physical delete.
         The user can only delete their profile if they have no active reservations.
         """
         obj = self.get_object(pk)
@@ -141,7 +141,6 @@ class UserDetailAPI(APIView):
             )
 
         if obj.id == request.user.id or request.user.is_superuser:
-            obj.is_active = False
 
             # Send email to the user
             send_account_deletion_email(obj)
@@ -153,7 +152,7 @@ class UserDetailAPI(APIView):
                 'Your account has been deleted.'
             )
 
-            obj.save()
+            obj.delete()
             return Response(status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_403_FORBIDDEN)
