@@ -1122,83 +1122,6 @@ class CancelReservationAPI(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class AuthenticationTestAPI(APIView):
-    """
-    API View to test the validity of an authentication token with the Alloggiati Web service.
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = AuthenticationTestSerializer
-
-    @method_decorator(is_active)
-    @method_decorator(is_admin)
-    def post(self, request):
-        """
-        Handles POST requests to validate an authentication token.
-        """
-        serializer = self.serializer_class(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {"errors": serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        structure_id = serializer.validated_data['structure_id']
-
-        try:
-            # Retrieve or generate a valid token
-            token_info = get_or_create_token(structure_id)
-
-            # Retrieve the user's information from the database
-            user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
-
-            # Build the SOAP request to validate the token
-            soap_request = build_soap_envelope(
-                action='{AlloggiatiService}Authentication_Test',
-                body_content={
-                    'Utente': ('{AlloggiatiService}Utente', user_info.allogiati_web_user),
-                    'token': ('{AlloggiatiService}token', token_info.token),
-                }
-            )
-
-            # Send the SOAP request
-            response_content = send_soap_request(soap_request)
-
-            # Parse and return the SOAP response
-            response_data = parse_soap_response(response_content, 'all',
-                                                ['esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio'])
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except ObjectDoesNotExist:
-            return Response(
-                {"error": "Structure not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        except ValidationError as e:
-            return Response(
-                {"error": e.message_dict},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        except ConnectionError as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-
-        except ET.ParseError as e:
-            return Response(
-                {"error": "Invalid SOAP response format"},
-                status=status.HTTP_502_BAD_GATEWAY
-            )
-
-        except Exception as e:
-            return Response(
-                {"error": f"An unexpected error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
 class SendElencoSchedineAPI(APIView):
     """
     API View to send the Elenco Schedine to the DMS.
@@ -1247,7 +1170,7 @@ class SendElencoSchedineAPI(APIView):
             response_data = parse_soap_response(
                 response_content,
                 'all',
-                ['esito', 'ErroreCod ', 'ErroreDes ', 'ErroreDettaglio ']
+                ['esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio']
             )
             return Response(response_data, status=status.HTTP_200_OK)
 
