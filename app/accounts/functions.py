@@ -763,10 +763,7 @@ def get_or_create_token(structure_id):
         TokenInfoAllogiatiWeb: The valid or newly created token.
     """
     # Filter by structure_id and check that the token is not expired
-    token_info = TokenInfoAllogiatiWeb.objects.filter(
-        structure_id=structure_id,
-        expires__gt=timezone.now()
-    ).first()
+    token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
 
     if token_info:
         return token_info
