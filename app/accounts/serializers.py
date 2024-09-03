@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
+from .functions import get_or_create_token
 from .models import (User, Structure, Room, Reservation, Discount,
                      StructureImage, RoomImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb, CheckinCategoryChoices)
 
@@ -404,7 +405,7 @@ class SendElencoSchedineSerializer(serializers.Serializer):
             # Get the valid token from TokenInfoAllogiatiWeb
             token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
             if not token_info:
-                raise serializers.ValidationError("No valid token found. Please generate a new one.")
+                get_or_create_token(structure_id)
             data['token'] = token_info.token
         except TokenInfoAllogiatiWeb.DoesNotExist:
             raise serializers.ValidationError("Token not found. Please generate a new one.")

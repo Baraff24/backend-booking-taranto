@@ -1215,7 +1215,6 @@ class SendElencoSchedineAPI(APIView):
 
         try:
             data = serializer.validated_data
-            structure_id = data.get('structure_id')
             elenco_schedine = [schedina for schedina in data['elenco_schedine']]
 
             # Retrieve or generate a valid token (already handled in serializer validate method)
