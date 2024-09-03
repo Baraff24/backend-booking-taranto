@@ -358,9 +358,9 @@ class SchedinaSerializer(serializers.Serializer):
         Override the to_representation method to concatenate all fields into a single string.
         """
         try:
-            # Adjust the date format if needed, e.g., 'yyyy-mm-dd' or other format
-            data_arrivo_str = instance['data_arrivo'].strftime('%Y-%m-%d')  # Example format change
-            data_nascita_str = instance['data_nascita'].strftime('%Y-%m-%d')  # Example format change
+            # Format dates as gg/MM/AAAA
+            data_arrivo_str = instance['data_arrivo'].strftime('%d/%m/%Y')
+            data_nascita_str = instance['data_nascita'].strftime('%d/%m/%Y')
 
             return (
                 f"{instance.get('tipo_alloggiati', '').ljust(2)}"
