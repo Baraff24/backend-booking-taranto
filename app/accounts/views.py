@@ -20,7 +20,7 @@ from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSe
                           StructureImageSerializer, AvailableRoomsForDatesSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
                           AuthenticationTestSerializer, SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer,
-                          SendWhatsAppToAllUsersSerializer)
+                          SendWhatsAppToAllUsersSerializer, SchedinaSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -1225,7 +1225,7 @@ class SendElencoSchedineAPI(APIView):
             data = serializer.validated_data
             print(f"Validated data: {data}")
 
-            elenco_schedine = [schedina for schedina in data['elenco_schedine']]
+            elenco_schedine = data['elenco_schedine']
             print(f"Elenco schedine: {elenco_schedine}")
 
             # Retrieve or generate a valid token (already handled in serializer validate method)
@@ -1241,10 +1241,12 @@ class SendElencoSchedineAPI(APIView):
             print(f"Initial body content: {body_content}")
 
             elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
-            for schedina in elenco_schedine:
-                print(f"Processing schedina: {schedina}")
+            for schedina_data in elenco_schedine:
+                print(f"Processing schedina: {schedina_data}")
+                # Convert the schedina_data to its string representation using SchedinaSerializer
+                schedina_str = SchedinaSerializer(schedina_data).data
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
-                schedina_element.text = schedina
+                schedina_element.text = schedina_str
             elenco_schedine_str = ET.tostring(elenco_subelement, encoding='unicode')
             print(f"Elenco schedine string: {elenco_schedine_str}")
 
@@ -1288,6 +1290,7 @@ class SendElencoSchedineAPI(APIView):
             print(f"Unexpected error: {str(e)}")
             return Response({"error": f"An unexpected error occurred: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 
