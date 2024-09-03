@@ -54,7 +54,7 @@ def is_active(view_func):
         user = request.user
         if user.is_active and user.is_authenticated:
             if EmailAddress.objects.filter(user=user, verified=True).exists():
-                if user.status == COMPLETE:  # Assuming `status` is a field on the `User` model
+                if user.status == COMPLETE:
                     return view_func(self, request, *args, **kwargs)
                 return Response({
                     "Error": "You have to complete the data completion process",
