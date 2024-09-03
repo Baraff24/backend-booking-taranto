@@ -1094,7 +1094,7 @@ class CancelReservationAPI(APIView):
 
         try:
             # Admins can cancel any reservation, but normal users can only cancel their own reservations
-            if request.user.is_admin:
+            if request.user.type == ADMIN or request.user.is_superuser:
                 reservation = Reservation.objects.get(reservation_id=reservation_id)
             else:
                 reservation = Reservation.objects.get(reservation_id=reservation_id, user=request.user)
