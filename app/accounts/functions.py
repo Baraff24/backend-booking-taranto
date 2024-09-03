@@ -50,18 +50,16 @@ def is_active(view_func):
     """
 
     @wraps(view_func)
-    def decorator(request, *args, **kwargs):
+    def decorator(self, request, *args, **kwargs):
         user = request.user
         if user.is_active and user.is_authenticated:
-            if EmailAddress.objects.filter(user=user, verified=True):
-                obj = User.objects.filter(email=user.email)
-                if obj[0].status == COMPLETE:
-                    return view_func(request, *args, **kwargs)
+            if EmailAddress.objects.filter(user=user, verified=True).exists():
+                if user.status == COMPLETE:  # Assuming `status` is a field on the `User` model
+                    return view_func(self, request, *args, **kwargs)
                 return Response({
                     "Error": "You have to complete the data completion process",
-                    "userStatus": obj[0].status
-                },
-                    status=status.HTTP_403_FORBIDDEN)
+                    "userStatus": user.status
+                }, status=status.HTTP_403_FORBIDDEN)
             return Response({"Error": "Your email is not verified"},
                             status=status.HTTP_403_FORBIDDEN)
         return Response({"Error": "Your account is not active"},
