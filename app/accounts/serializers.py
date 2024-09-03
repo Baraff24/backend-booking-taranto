@@ -357,22 +357,26 @@ class SchedinaSerializer(serializers.Serializer):
         """
         Override the to_representation method to concatenate all fields into a single string.
         """
-        return (
-            f"{instance['tipo_alloggiati']}"
-            f"{instance['data_arrivo'].strftime('%d/%m/%Y')}"
-            f"{str(instance['numero_giorni_permanenza']).zfill(2)}"
-            f"{instance['cognome'].ljust(50)}"
-            f"{instance['nome'].ljust(30)}"
-            f"{instance['sesso']}"
-            f"{instance['data_nascita'].strftime('%d/%m/%Y')}"
-            f"{instance['comune_nascita'].ljust(9)}"
-            f"{instance['provincia_nascita']}"
-            f"{instance['stato_nascita'].ljust(9)}"
-            f"{instance['cittadinanza'].ljust(9)}"
-            f"{instance['tipo_documento'].ljust(5)}"
-            f"{instance['numero_documento'].ljust(20)}"
-            f"{instance['luogo_rilascio_documento'].ljust(9)}"
-        ).upper()
+        try:
+            return (
+                f"{instance.get('tipo_alloggiati', '').ljust(2)}"
+                f"{instance.get('data_arrivo').strftime('%d/%m/%Y') if instance.get('data_arrivo') else ''}"
+                f"{str(instance.get('numero_giorni_permanenza', '')).zfill(2)}"
+                f"{instance.get('cognome', '').ljust(50)}"
+                f"{instance.get('nome', '').ljust(30)}"
+                f"{instance.get('sesso', '').ljust(1)}"
+                f"{instance.get('data_nascita').strftime('%d/%m/%Y') if instance.get('data_nascita') else ''}"
+                f"{instance.get('comune_nascita', '').ljust(9)}"
+                f"{instance.get('provincia_nascita', '').ljust(2)}"
+                f"{instance.get('stato_nascita', '').ljust(9)}"
+                f"{instance.get('cittadinanza', '').ljust(9)}"
+                f"{instance.get('tipo_documento', '').ljust(5)}"
+                f"{instance.get('numero_documento', '').ljust(20)}"
+                f"{instance.get('luogo_rilascio_documento', '').ljust(9)}"
+            ).upper()
+        except Exception as e:
+            print(f"Error in to_representation: {str(e)}")
+            raise serializers.ValidationError(f"Error serializing schedina: {str(e)}")
 
 
 class SendElencoSchedineSerializer(serializers.Serializer):
