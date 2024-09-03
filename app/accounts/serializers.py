@@ -358,14 +358,18 @@ class SchedinaSerializer(serializers.Serializer):
         Override the to_representation method to concatenate all fields into a single string.
         """
         try:
+            # Adjust the date format if needed, e.g., 'yyyy-mm-dd' or other format
+            data_arrivo_str = instance['data_arrivo'].strftime('%Y-%m-%d')  # Example format change
+            data_nascita_str = instance['data_nascita'].strftime('%Y-%m-%d')  # Example format change
+
             return (
                 f"{instance.get('tipo_alloggiati', '').ljust(2)}"
-                f"{instance.get('data_arrivo').strftime('%d/%m/%Y') if instance.get('data_arrivo') else ''}"
+                f"{data_arrivo_str}"  # Use the adjusted date format
                 f"{str(instance.get('numero_giorni_permanenza', '')).zfill(2)}"
                 f"{instance.get('cognome', '').ljust(50)}"
                 f"{instance.get('nome', '').ljust(30)}"
                 f"{instance.get('sesso', '').ljust(1)}"
-                f"{instance.get('data_nascita').strftime('%d/%m/%Y') if instance.get('data_nascita') else ''}"
+                f"{data_nascita_str}"  # Use the adjusted date format
                 f"{instance.get('comune_nascita', '').ljust(9)}"
                 f"{instance.get('provincia_nascita', '').ljust(2)}"
                 f"{instance.get('stato_nascita', '').ljust(9)}"
