@@ -7,9 +7,9 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
-from .functions import get_or_create_token
 from .models import (User, Structure, Room, Reservation, Discount,
-                     StructureImage, RoomImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb, CheckinCategoryChoices)
+                     StructureImage, RoomImage, UserAllogiatiWeb,
+                     TokenInfoAllogiatiWeb, CheckinCategoryChoices)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -401,14 +401,19 @@ class SendElencoSchedineSerializer(serializers.Serializer):
         except UserAllogiatiWeb.DoesNotExist:
             raise serializers.ValidationError("Utente associated with the structure ID not found.")
 
-        try:
-            # Get the valid token from TokenInfoAllogiatiWeb
-            token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
-            if not token_info:
-                get_or_create_token(structure_id)
-            data['token'] = token_info.token
-        except TokenInfoAllogiatiWeb.DoesNotExist:
-            raise serializers.ValidationError("Token not found. Please generate a new one.")
+        # Retrieve or generate a valid token
+        token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
+        if not token_info:
+            # Lazy import to avoid circular imports
+            from .functions import get_or_create_token
+            # Generate a new token if none exists or the existing one is expired
+            token_info = get_or_create_token(structure_id)
+
+        # Ensure the token is valid before proceeding
+        if not token_info or not token_info.token:
+            raise serializers.ValidationError("No valid token found. Please generate a new one.")
+
+        data['token'] = token_info.token
 
         # Additional cross-field validations can go here if needed
         return data

@@ -762,7 +762,12 @@ def get_or_create_token(structure_id):
     Returns:
         TokenInfoAllogiatiWeb: The valid or newly created token.
     """
-    token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
+    # Filter by structure_id and check that the token is not expired
+    token_info = TokenInfoAllogiatiWeb.objects.filter(
+        structure_id=structure_id,
+        expires__gt=timezone.now()
+    ).first()
+
     if token_info:
         return token_info
 
@@ -782,22 +787,36 @@ def generate_and_send_token_allogiati_web_request(structure_id):
     Returns:
         TokenInfoAllogiatiWeb: The newly created token.
     """
-    user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
-    body_content = {
-        'Utente': ('{AlloggiatiService}Utente', user_info.allogiati_web_user),
-        'Password': ('{AlloggiatiService}Password', user_info.alloggiati_web_password),
-        'WsKey': ('{AlloggiatiService}WsKey', user_info.wskey),
-    }
+    try:
+        user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+        body_content = {
+            'Utente': ('{AlloggiatiService}Utente', user_info.allogiati_web_user),
+            'Password': ('{AlloggiatiService}Password', user_info.alloggiati_web_password),
+            'WsKey': ('{AlloggiatiService}WsKey', user_info.wskey),
+        }
 
-    xml_request = build_soap_envelope('{AlloggiatiService}GenerateToken', body_content)
-    response_content = send_soap_request(xml_request)
+        xml_request = build_soap_envelope('{AlloggiatiService}GenerateToken', body_content)
+        response_content = send_soap_request(xml_request)
 
-    token_data = parse_soap_response(response_content, 'all', ['issued', 'expires', 'token'])
-    return TokenInfoAllogiatiWeb.objects.create(
-        issued=datetime.fromisoformat(token_data['issued']),
-        expires=datetime.fromisoformat(token_data['expires']),
-        token=token_data['token']
-    )
+        # Parse the SOAP response for token details
+        token_data = parse_soap_response(
+            response_content,
+            'all',
+            ['issued', 'expires', 'token']
+        )
+
+        # Create and return the token record in the database
+        return TokenInfoAllogiatiWeb.objects.create(
+            issued=datetime.fromisoformat(token_data['issued']),
+            expires=datetime.fromisoformat(token_data['expires']),
+            token=token_data['token'],
+            structure_id=structure_id
+        )
+
+    except UserAllogiatiWeb.DoesNotExist:
+        raise ValidationError(f"User information for structure_id {structure_id} not found.")
+    except Exception as e:
+        raise Exception(f"An error occurred while generating the token: {str(e)}")
 
 
 def validate_elenco_schedine(structure_id, elenco_schedine):
