@@ -141,7 +141,6 @@ class UserDetailAPI(APIView):
             )
 
         if obj.id == request.user.id or request.user.is_superuser:
-
             # Send email to the user
             send_account_deletion_email(obj)
 
@@ -175,7 +174,8 @@ class CompleteProfileAPI(APIView):
             if serializer.is_valid():
                 has_accepted_terms = serializer.validated_data['has_accepted_terms']
                 if not has_accepted_terms:
-                    return Response({'error': 'You must accept the terms and conditions.'}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({'error': 'You must accept the terms and conditions.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
                 user.first_name = serializer.validated_data['first_name']
                 user.last_name = serializer.validated_data['last_name']
@@ -1243,8 +1243,8 @@ class SendElencoSchedineAPI(APIView):
             elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
             for schedina_data in elenco_schedine:
                 print(f"Processing schedina: {schedina_data}")
-                # Convert the schedina_data to its string representation using SchedinaSerializer
-                schedina_str = SchedinaSerializer(schedina_data).data
+                # Convert the schedina_data to its string representation using the serializer's to_representation method
+                schedina_str = SchedinaSerializer().to_representation(schedina_data)
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina_str
             elenco_schedine_str = ET.tostring(elenco_subelement, encoding='unicode')
@@ -1290,8 +1290,6 @@ class SendElencoSchedineAPI(APIView):
             print(f"Unexpected error: {str(e)}")
             return Response({"error": f"An unexpected error occurred: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 class CheckinCategoryChoicesAPI(APIView):
