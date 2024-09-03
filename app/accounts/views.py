@@ -1208,12 +1208,8 @@ class SendElencoSchedineAPI(APIView):
 
     @method_decorator(is_active)
     def post(self, request, *args, **kwargs):
-        """
-        Handles POST requests to validate and send the Elenco Schedine.
-        """
         print("Starting SendElencoSchedineAPI POST request...")
 
-        # Print the incoming request data
         print(f"Request data: {request.data}")
 
         serializer = self.serializer_class(data=request.data)
@@ -1228,12 +1224,10 @@ class SendElencoSchedineAPI(APIView):
             elenco_schedine = data['elenco_schedine']
             print(f"Elenco schedine: {elenco_schedine}")
 
-            # Retrieve or generate a valid token (already handled in serializer validate method)
             utente = data['utente']
             token = data['token']
             print(f"Utente: {utente}, Token: {token}")
 
-            # Build the SOAP request
             body_content = {
                 'Utente': ('{AlloggiatiService}Utente', utente),
                 'token': ('{AlloggiatiService}token', token),
@@ -1243,16 +1237,13 @@ class SendElencoSchedineAPI(APIView):
             elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
             for schedina_data in elenco_schedine:
                 print(f"Processing schedina: {schedina_data}")
-                # Convert the schedina_data to its string representation using the serializer's to_representation method
                 schedina_str = SchedinaSerializer().to_representation(schedina_data)
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina_str
-            elenco_schedine_str = ET.tostring(elenco_subelement, encoding='unicode')
-            print(f"Elenco schedine string: {elenco_schedine_str}")
 
-            body_content['ElencoSchedine'] = (
-                '{AlloggiatiService}ElencoSchedine', elenco_schedine_str
-            )
+            # Instead of converting the XML to a string, add it directly to the body_content
+            body_content['ElencoSchedine'] = elenco_subelement
+
             print(f"Final body content: {body_content}")
 
             soap_request = build_soap_envelope(
@@ -1261,11 +1252,9 @@ class SendElencoSchedineAPI(APIView):
             )
             print(f"SOAP request: {soap_request}")
 
-            # Send the SOAP request
             response_content = send_soap_request(soap_request)
             print(f"SOAP response content: {response_content}")
 
-            # Parse and return the SOAP response
             response_data = parse_soap_response(
                 response_content,
                 'all',
