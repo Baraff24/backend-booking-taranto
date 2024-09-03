@@ -1233,8 +1233,9 @@ class SendElencoSchedineAPI(APIView):
             for schedina in elenco_schedine:
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina
+            elenco_schedine_str = ET.tostring(elenco_subelement, encoding='unicode')
             body_content['ElencoSchedine'] = (
-                '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement, encoding='unicode')
+                '{AlloggiatiService}ElencoSchedine', elenco_schedine_str
             )
 
             soap_request = build_soap_envelope(
