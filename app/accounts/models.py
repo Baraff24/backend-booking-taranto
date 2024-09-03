@@ -27,6 +27,7 @@ class User(AbstractUser):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES,
                               default=PENDING_COMPLETE_DATA)
     type = models.CharField(max_length=10, choices=TYPE_VALUES, default=CUSTOMER)
+    has_accepted_terms = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.email}"

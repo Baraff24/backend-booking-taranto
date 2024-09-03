@@ -173,9 +173,14 @@ class CompleteProfileAPI(APIView):
         if user.status == PENDING_COMPLETE_DATA:
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
+                has_accepted_terms = serializer.validated_data['has_accepted_terms']
+                if not has_accepted_terms:
+                    return Response({'error': 'You must accept the terms and conditions.'}, status=status.HTTP_400_BAD_REQUEST)
+
                 user.first_name = serializer.validated_data['first_name']
                 user.last_name = serializer.validated_data['last_name']
                 user.telephone = serializer.validated_data['telephone']
+                user.has_accepted_terms = has_accepted_terms
                 user.status = COMPLETE
                 user.save()
                 return Response({'user_status': COMPLETE}, status=status.HTTP_200_OK)
