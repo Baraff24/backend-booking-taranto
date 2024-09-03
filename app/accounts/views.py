@@ -1211,40 +1211,57 @@ class SendElencoSchedineAPI(APIView):
         """
         Handles POST requests to validate and send the Elenco Schedine.
         """
+        print("Starting SendElencoSchedineAPI POST request...")
+
+        # Print the incoming request data
+        print(f"Request data: {request.data}")
+
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
+            print(f"Serializer errors: {serializer.errors}")
             return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             data = serializer.validated_data
+            print(f"Validated data: {data}")
+
             elenco_schedine = [schedina for schedina in data['elenco_schedine']]
+            print(f"Elenco schedine: {elenco_schedine}")
 
             # Retrieve or generate a valid token (already handled in serializer validate method)
             utente = data['utente']
             token = data['token']
+            print(f"Utente: {utente}, Token: {token}")
 
             # Build the SOAP request
             body_content = {
                 'Utente': ('{AlloggiatiService}Utente', utente),
                 'token': ('{AlloggiatiService}token', token),
             }
+            print(f"Initial body content: {body_content}")
 
             elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
             for schedina in elenco_schedine:
+                print(f"Processing schedina: {schedina}")
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina
             elenco_schedine_str = ET.tostring(elenco_subelement, encoding='unicode')
+            print(f"Elenco schedine string: {elenco_schedine_str}")
+
             body_content['ElencoSchedine'] = (
                 '{AlloggiatiService}ElencoSchedine', elenco_schedine_str
             )
+            print(f"Final body content: {body_content}")
 
             soap_request = build_soap_envelope(
                 action='{AlloggiatiService}Send',
                 body_content=body_content
             )
+            print(f"SOAP request: {soap_request}")
 
             # Send the SOAP request
             response_content = send_soap_request(soap_request)
+            print(f"SOAP response content: {response_content}")
 
             # Parse and return the SOAP response
             response_data = parse_soap_response(
@@ -1252,20 +1269,26 @@ class SendElencoSchedineAPI(APIView):
                 'all',
                 ['Esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio']
             )
+            print(f"Parsed SOAP response data: {response_data}")
             return Response(response_data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
+            print("Error: Structure or Token not found")
             return Response({"error": "Structure or Token not found"}, status=status.HTTP_404_NOT_FOUND)
 
         except ValidationError as e:
+            print(f"Validation error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         except ET.ParseError as e:
+            print(f"SOAP response parsing error: {str(e)}")
             return Response({"error": "Invalid SOAP response format"}, status=status.HTTP_502_BAD_GATEWAY)
 
         except Exception as e:
+            print(f"Unexpected error: {str(e)}")
             return Response({"error": f"An unexpected error occurred: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class CheckinCategoryChoicesAPI(APIView):
