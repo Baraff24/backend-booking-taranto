@@ -1081,7 +1081,7 @@ class CancelReservationAPI(APIView):
     serializer_class = CancelReservationSerializer
 
     @method_decorator(is_active)
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         """
         Cancel a reservation and process a refund
         """
@@ -1093,7 +1093,6 @@ class CancelReservationAPI(APIView):
         reservation_id = serializer.validated_data['reservation_id']
 
         try:
-
             # Admins can cancel any reservation, but normal users can only cancel their own reservations
             if request.user.is_admin:
                 reservation = Reservation.objects.get(reservation_id=reservation_id)
@@ -1105,8 +1104,6 @@ class CancelReservationAPI(APIView):
                                 status=status.HTTP_400_BAD_REQUEST)
 
             cancel_reservation_and_remove_event(reservation)
-
-            # Send Whatsapp message
 
             return Response({
                 'message': 'Reservation canceled and refund processed successfully.',
