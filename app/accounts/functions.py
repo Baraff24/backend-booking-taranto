@@ -424,18 +424,8 @@ def send_cancel_reservation_email(reservation):
 
 def cancel_reservation_and_remove_event(reservation):
     """
-    Cancel the reservation and remove the corresponding event from Google Calendar
+    Cancel the reservation and remove the corresponding event from Google Calendar.
     """
-    reservation.status = CANCELED
-
-    # Send a cancel reservation email
-    send_cancel_reservation_email(reservation)
-
-    # Send a WhatsApp message
-    send_cancel_reservation_whatsapp_message(reservation)
-
-    reservation.save()
-
     try:
         creds = GoogleOAuthCredentials.objects.get(id=1)
         credentials = Credentials(
@@ -447,10 +437,24 @@ def cancel_reservation_and_remove_event(reservation):
             scopes=creds.scopes.split()
         )
         service = build('calendar', 'v3', credentials=credentials)
-        service.events().delete(calendarId='primary', eventId=reservation.google_calendar_event_id).execute()
+
+        if reservation.event_id:
+            # Attempt to delete the event from Google Calendar
+            service.events().delete(calendarId=reservation.room.calendar_id, eventId=reservation.event_id).execute()
+
+            # If deletion is successful, update reservation status and send notifications
+            reservation.status = CANCELED
+            reservation.save()
+
+            # Send notifications
+            send_cancel_reservation_email(reservation)
+            send_cancel_reservation_whatsapp_message(reservation)
+        else:
+            raise Exception("No event_id found for this reservation.")
     except GoogleOAuthCredentials.DoesNotExist:
         raise Exception('Google Calendar credentials not found.')
     except Exception as e:
+        # If an exception occurs, ensure the reservation status is not altered
         raise Exception(f"Failed to remove event from Google Calendar: {str(e)}")
 
 
@@ -580,8 +584,13 @@ def add_reservation_to_google_calendar(service, reservation):
                 ],
             },
         }
-        service.events().insert(calendarId=reservation.room.calendar_id, body=event).execute()
-        return event
+        created_event = service.events().insert(calendarId=reservation.room.calendar_id, body=event).execute()
+
+        # Store the eventId in the reservation
+        reservation.event_id = created_event.get('id')
+        reservation.save()
+
+        return created_event
     except Exception as e:
         raise Exception(f"Failed to add reservation to Google Calendar: {str(e)}")
 
@@ -807,7 +816,6 @@ def generate_and_send_token_allogiati_web_request(structure_id):
             issued=datetime.fromisoformat(token_data['issued']),
             expires=datetime.fromisoformat(token_data['expires']),
             token=token_data['token'],
-            structure_id=structure_id
         )
 
     except UserAllogiatiWeb.DoesNotExist:

@@ -135,6 +135,7 @@ class Reservation(models.Model):
     )
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='reservations')
     reservation_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    event_id = models.CharField(max_length=500, blank=True, null=True)
     check_in = models.DateField()
     check_out = models.DateField()
     number_of_people = models.PositiveIntegerField()
