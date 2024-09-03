@@ -1209,7 +1209,6 @@ class SendElencoSchedineAPI(APIView):
     @method_decorator(is_active)
     def post(self, request, *args, **kwargs):
         print("Starting SendElencoSchedineAPI POST request...")
-
         print(f"Request data: {request.data}")
 
         serializer = self.serializer_class(data=request.data)
@@ -1228,6 +1227,7 @@ class SendElencoSchedineAPI(APIView):
             token = data['token']
             print(f"Utente: {utente}, Token: {token}")
 
+            # Initial body content without 'ElencoSchedine'
             body_content = {
                 'Utente': ('{AlloggiatiService}Utente', utente),
                 'token': ('{AlloggiatiService}token', token),
@@ -1241,7 +1241,7 @@ class SendElencoSchedineAPI(APIView):
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina_str
 
-            # Instead of converting the XML to a string, add it directly to the body_content
+            # Add the elenco_subelement directly to the body content
             body_content['ElencoSchedine'] = elenco_subelement
 
             print(f"Final body content: {body_content}")
@@ -1252,9 +1252,11 @@ class SendElencoSchedineAPI(APIView):
             )
             print(f"SOAP request: {soap_request}")
 
+            # Send the SOAP request
             response_content = send_soap_request(soap_request)
             print(f"SOAP response content: {response_content}")
 
+            # Parse and return the SOAP response
             response_data = parse_soap_response(
                 response_content,
                 'all',

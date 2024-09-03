@@ -677,13 +677,7 @@ def get_busy_dates_from_calendar(service, room, check_in, check_out):
 def build_soap_envelope(action, body_content):
     """
     Constructs a SOAP envelope with the specified action and body content.
-
-    Args:
-        action (str): SOAP action, such as 'GenerateToken' or 'Test'.
-        body_content (dict): The content to include in the SOAP body.
-
-    Returns:
-        str: The generated SOAP XML request.
+    Handles both strings and XML Elements in the body_content.
     """
     envelope = ET.Element('{http://www.w3.org/2003/05/soap-envelope}Envelope', attrib={
         'xmlns:soap': 'http://www.w3.org/2003/05/soap-envelope',
@@ -694,10 +688,15 @@ def build_soap_envelope(action, body_content):
     action_element = ET.SubElement(body, f'{action}')
 
     for key, value in body_content.items():
-        sub_element = ET.SubElement(action_element, f'{value[0]}')
-        sub_element.text = value[1]
+        if isinstance(value, tuple):
+            sub_element = ET.SubElement(action_element, value[0])
+            sub_element.text = value[1]
+        else:
+            # Directly append XML Element
+            action_element.append(value)
 
     return ET.tostring(envelope, encoding='utf-8', method='xml')
+
 
 
 def send_soap_request(xml_request):
