@@ -1127,8 +1127,8 @@ class AuthenticationTestAPI(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AuthenticationTestSerializer
 
-    @is_active
-    @is_admin
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request):
         """
         Handles POST requests to validate an authentication token.
@@ -1275,7 +1275,7 @@ class CheckinCategoryChoicesAPI(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CheckinCategoryChoicesSerializer
 
-    @is_active
+    @method_decorator(is_active)
     def get(self, request):
         category = request.query_params.get('category', None)
 
@@ -1301,8 +1301,8 @@ class SendWhatsAppToAllUsersAPIView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = SendWhatsAppToAllUsersSerializer
 
-    @is_active
-    @is_admin
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request):
         """
         Handles POST requests to send a WhatsApp message to all users.
