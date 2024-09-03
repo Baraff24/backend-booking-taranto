@@ -698,7 +698,6 @@ def build_soap_envelope(action, body_content):
     return ET.tostring(envelope, encoding='utf-8', method='xml')
 
 
-
 def send_soap_request(xml_request):
     """
     Sends the SOAP request to the Alloggiati Web service.
@@ -736,26 +735,27 @@ def parse_soap_response(xml_response, action_namespace, expected_fields):
     }
 
     root = ET.fromstring(xml_response)
+
+    # Look for the esito element
     esito_element = root.find(f'.//{action_namespace}:esito', namespaces)
 
+    # If esito is not found or is not 'true', collect error details
     if esito_element is None or esito_element.text.strip().lower() != 'true':
         error_details = {}
         for field in expected_fields:
             element = root.find(f'.//{action_namespace}:{field}', namespaces)
-            if element is not None and element.text is not None:
+            if element is not None and element.text:
                 error_details[field] = element.text.strip()
             else:
                 error_details[field] = "Missing or empty field"
 
         raise ValidationError("SOAP Error", error_details)
 
+    # If esito is 'true', or esito is not used to determine success, collect expected fields
     result = {}
     for field in expected_fields:
         element = root.find(f'.//{action_namespace}:{field}', namespaces)
-        if element is not None and element.text is not None:
-            result[field] = element.text.strip()
-        else:
-            result[field] = None  # or set a default value or handle as needed
+        result[field] = element.text.strip() if element is not None and element.text else None
 
     return result
 

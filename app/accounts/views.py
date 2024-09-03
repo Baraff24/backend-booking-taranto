@@ -1208,35 +1208,26 @@ class SendElencoSchedineAPI(APIView):
 
     @method_decorator(is_active)
     def post(self, request, *args, **kwargs):
-        print("Starting SendElencoSchedineAPI POST request...")
-        print(f"Request data: {request.data}")
-
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
-            print(f"Serializer errors: {serializer.errors}")
             return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             data = serializer.validated_data
-            print(f"Validated data: {data}")
 
             elenco_schedine = data['elenco_schedine']
-            print(f"Elenco schedine: {elenco_schedine}")
 
             utente = data['utente']
             token = data['token']
-            print(f"Utente: {utente}, Token: {token}")
 
             # Initial body content without 'ElencoSchedine'
             body_content = {
                 'Utente': ('{AlloggiatiService}Utente', utente),
                 'token': ('{AlloggiatiService}token', token),
             }
-            print(f"Initial body content: {body_content}")
 
             elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
             for schedina_data in elenco_schedine:
-                print(f"Processing schedina: {schedina_data}")
                 schedina_str = SchedinaSerializer().to_representation(schedina_data)
                 schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
                 schedina_element.text = schedina_str
@@ -1244,41 +1235,32 @@ class SendElencoSchedineAPI(APIView):
             # Add the elenco_subelement directly to the body content
             body_content['ElencoSchedine'] = elenco_subelement
 
-            print(f"Final body content: {body_content}")
-
             soap_request = build_soap_envelope(
                 action='{AlloggiatiService}Send',
                 body_content=body_content
             )
-            print(f"SOAP request: {soap_request}")
 
             # Send the SOAP request
             response_content = send_soap_request(soap_request)
-            print(f"SOAP response content: {response_content}")
 
             # Parse and return the SOAP response
             response_data = parse_soap_response(
                 response_content,
                 'all',
-                ['Esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio']
+                ['esito', 'ErroreCod ', 'ErroreDes ', 'ErroreDettaglio ']
             )
-            print(f"Parsed SOAP response data: {response_data}")
             return Response(response_data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
-            print("Error: Structure or Token not found")
             return Response({"error": "Structure or Token not found"}, status=status.HTTP_404_NOT_FOUND)
 
         except ValidationError as e:
-            print(f"Validation error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         except ET.ParseError as e:
-            print(f"SOAP response parsing error: {str(e)}")
             return Response({"error": "Invalid SOAP response format"}, status=status.HTTP_502_BAD_GATEWAY)
 
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
             return Response({"error": f"An unexpected error occurred: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
