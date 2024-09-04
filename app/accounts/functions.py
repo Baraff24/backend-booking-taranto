@@ -856,7 +856,11 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
         xml_request = build_soap_envelope('{AlloggiatiService}Test', body_content)
         response_content = send_soap_request(xml_request)
 
-        return parse_soap_response(response_content, 'all', ['Esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio'])
+        return parse_soap_response(
+            response_content,
+            'all',
+            ['Esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio']
+        )
 
     except (ObjectDoesNotExist, ValidationError, ConnectionError) as e:
         return {"error": str(e), "status": "failed"}

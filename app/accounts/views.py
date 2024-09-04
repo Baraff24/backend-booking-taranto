@@ -1159,7 +1159,7 @@ class SendElencoSchedineAPI(APIView):
             body_content['ElencoSchedine'] = elenco_subelement
 
             soap_request = build_soap_envelope(
-                action='{AlloggiatiService}Send',
+                action='{AlloggiatiService}Test',
                 body_content=body_content
             )
 
