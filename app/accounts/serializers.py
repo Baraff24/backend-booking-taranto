@@ -353,6 +353,23 @@ class SchedinaSerializer(serializers.Serializer):
     numero_documento = serializers.CharField(max_length=20)
     luogo_rilascio_documento = serializers.CharField(max_length=9)
 
+    def validate(self, data):
+        """
+        Override the validate method to apply conditional validation.
+        """
+        # Conditionally set comune_nascita and provincia_nascita to empty if the guest is Italian
+        if data.get('cittadinanza') == "100000100":
+            data['comune_nascita'] = ''
+            data['provincia_nascita'] = ''
+
+        # Conditionally set tipo_documento and numero_documento to empty for specific guest types
+        if data.get('tipo_alloggiati') in ['19', '20']:
+            data['tipo_documento'] = ''
+            data['numero_documento'] = ''
+            data['luogo_rilascio_documento'] = ''
+
+        return data
+
     def to_representation(self, instance):
         """
         Override the to_representation method to concatenate all fields into a single string.
@@ -362,20 +379,13 @@ class SchedinaSerializer(serializers.Serializer):
             data_arrivo_str = instance['data_arrivo'].strftime('%d/%m/%Y')
             data_nascita_str = instance['data_nascita'].strftime('%d/%m/%Y')
 
-            # Conditionally set comune_nascita and provincia_nascita to empty string if guest is Italian
-            if instance.get('is_italian') == "100000100":
-                comune_nascita_str = ''.ljust(9)
-                provincia_nascita_str = ''.ljust(2)
-            else:
-                comune_nascita_str = instance.get('comune_nascita', '').ljust(9)
-                provincia_nascita_str = instance.get('provincia_nascita', '').ljust(2)
+            # Comune and provincia are already conditionally validated in 'validate'
+            comune_nascita_str = instance.get('comune_nascita', '').ljust(9)
+            provincia_nascita_str = instance.get('provincia_nascita', '').ljust(2)
 
-            if instance.get('tipo_alloggiati') in ['19', '20']:
-                tipo_documento_str = ''.ljust(5)
-                numero_documento_str = ''.ljust(20)
-            else:
-                tipo_documento_str = instance.get('tipo_documento', '').ljust(5)
-                numero_documento_str = instance.get('numero_documento', '').ljust(20)
+            tipo_documento_str = instance.get('tipo_documento', '').ljust(5)
+            numero_documento_str = instance.get('numero_documento', '').ljust(20)
+            luogo_rilascio_documento_str = instance.get('luogo_rilascio_documento', '').ljust(9)
 
             return (
                 f"{instance.get('tipo_alloggiati', '').ljust(2)}"
@@ -391,7 +401,7 @@ class SchedinaSerializer(serializers.Serializer):
                 f"{instance.get('cittadinanza', '').ljust(9)}"
                 f"{tipo_documento_str}"
                 f"{numero_documento_str}"
-                f"{instance.get('luogo_rilascio_documento', '').ljust(9)}"
+                f"{luogo_rilascio_documento_str}"
             ).upper()
         except Exception as e:
             print(f"Error in to_representation: {str(e)}")
