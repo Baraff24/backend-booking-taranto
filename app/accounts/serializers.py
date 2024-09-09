@@ -353,6 +353,9 @@ class SchedinaSerializer(serializers.Serializer):
     numero_documento = serializers.CharField(max_length=20)
     luogo_rilascio_documento = serializers.CharField(max_length=9)
 
+    # Boolean field to indicate if the guest is italian or not
+    is_italian = serializers.BooleanField(default=False)
+
     def to_representation(self, instance):
         """
         Override the to_representation method to concatenate all fields into a single string.
@@ -362,20 +365,35 @@ class SchedinaSerializer(serializers.Serializer):
             data_arrivo_str = instance['data_arrivo'].strftime('%d/%m/%Y')
             data_nascita_str = instance['data_nascita'].strftime('%d/%m/%Y')
 
+            # Conditionally set comune_nascita and provincia_nascita to empty string if guest is Italian
+            if instance.get('is_italian'):
+                comune_nascita_str = ''.ljust(9)
+                provincia_nascita_str = ''.ljust(2)
+            else:
+                comune_nascita_str = instance.get('comune_nascita', '').ljust(9)
+                provincia_nascita_str = instance.get('provincia_nascita', '').ljust(2)
+
+            if instance.get('tipo_alloggiati') in ['19', '20']:
+                tipo_documento_str = ''.ljust(5)
+                numero_documento_str = ''.ljust(20)
+            else:
+                tipo_documento_str = instance.get('tipo_documento', '').ljust(5)
+                numero_documento_str = instance.get('numero_documento', '').ljust(20)
+
             return (
                 f"{instance.get('tipo_alloggiati', '').ljust(2)}"
-                f"{data_arrivo_str}"  # Use the adjusted date format
+                f"{data_arrivo_str}"
                 f"{str(instance.get('numero_giorni_permanenza', '')).zfill(2)}"
                 f"{instance.get('cognome', '').ljust(50)}"
                 f"{instance.get('nome', '').ljust(30)}"
                 f"{instance.get('sesso', '').ljust(1)}"
-                f"{data_nascita_str}"  # Use the adjusted date format
-                f"{instance.get('comune_nascita', '').ljust(9)}"
-                f"{instance.get('provincia_nascita', '').ljust(2)}"
+                f"{data_nascita_str}"
+                f"{comune_nascita_str}"
+                f"{provincia_nascita_str}"
                 f"{instance.get('stato_nascita', '').ljust(9)}"
                 f"{instance.get('cittadinanza', '').ljust(9)}"
-                f"{instance.get('tipo_documento', '').ljust(5)}"
-                f"{instance.get('numero_documento', '').ljust(20)}"
+                f"{tipo_documento_str}"
+                f"{numero_documento_str}"
                 f"{instance.get('luogo_rilascio_documento', '').ljust(9)}"
             ).upper()
         except Exception as e:
