@@ -345,13 +345,13 @@ class SchedinaSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=30)
     sesso = serializers.ChoiceField(choices=[('1', 'M'), ('2', 'F')])
     data_nascita = serializers.DateField(input_formats=['%d/%m/%Y'])
-    comune_nascita = serializers.CharField(max_length=9)
-    provincia_nascita = serializers.CharField(max_length=2)
+    comune_nascita = serializers.CharField(max_length=9, required=False, allow_blank=True)
+    provincia_nascita = serializers.CharField(max_length=2, required=False, allow_blank=True)
     stato_nascita = serializers.CharField(max_length=9)
     cittadinanza = serializers.CharField(max_length=9)
-    tipo_documento = serializers.CharField(max_length=5)
-    numero_documento = serializers.CharField(max_length=20)
-    luogo_rilascio_documento = serializers.CharField(max_length=9)
+    tipo_documento = serializers.CharField(max_length=5, required=False, allow_blank=True)
+    numero_documento = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    luogo_rilascio_documento = serializers.CharField(max_length=9, required=False, allow_blank=True)
 
     def validate(self, data):
         """
