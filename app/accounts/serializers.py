@@ -353,9 +353,6 @@ class SchedinaSerializer(serializers.Serializer):
     numero_documento = serializers.CharField(max_length=20)
     luogo_rilascio_documento = serializers.CharField(max_length=9)
 
-    # Boolean field to indicate if the guest is italian or not
-    is_italian = serializers.BooleanField(default=False)
-
     def to_representation(self, instance):
         """
         Override the to_representation method to concatenate all fields into a single string.
@@ -366,7 +363,7 @@ class SchedinaSerializer(serializers.Serializer):
             data_nascita_str = instance['data_nascita'].strftime('%d/%m/%Y')
 
             # Conditionally set comune_nascita and provincia_nascita to empty string if guest is Italian
-            if instance.get('is_italian'):
+            if instance.get('is_italian') == "100000100":
                 comune_nascita_str = ''.ljust(9)
                 provincia_nascita_str = ''.ljust(2)
             else:
