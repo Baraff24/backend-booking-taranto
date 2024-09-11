@@ -452,6 +452,45 @@ class SendElencoSchedineSerializer(serializers.Serializer):
         return data
 
 
+# Serializer for Puglia DMS
+class ComponenteSerializer(serializers.Serializer):
+    codice_cliente_sr = serializers.CharField(max_length=20)
+    sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
+    cittadinanza = serializers.CharField(max_length=9)
+    paese_residenza = serializers.CharField(max_length=9, required=False)
+    comune_residenza = serializers.CharField(max_length=9, required=False)
+    occupazione_posto_letto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
+    eta = serializers.IntegerField(min_value=0)
+
+
+# Serializer for Puglia DMS
+class ArrivoSerializer(serializers.Serializer):
+    codice_cliente_sr = serializers.CharField(max_length=20)
+    sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
+    cittadinanza = serializers.CharField(max_length=9)
+    comune_residenza = serializers.CharField(max_length=9, required=False)
+    occupazione_postoletto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
+    dayuse = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
+    tipologia_alloggiato = serializers.CharField(max_length=2)
+    eta = serializers.IntegerField(min_value=0)
+    durata_soggiorno = serializers.IntegerField(min_value=1, required=False)
+    mezzo_trasporto_arrivo = serializers.CharField(max_length=50, required=False)
+    mezzo_trasporto_movimento = serializers.CharField(max_length=50, required=False)
+    motivazioni_viaggio = serializers.CharField(max_length=50, required=False)
+    componenti = ComponenteSerializer(many=True, required=False)
+
+
+# Serializer for Puglia DMS
+class MovimentoSerializer(serializers.Serializer):
+    type = serializers.ChoiceField(choices=[('MP', 'Movement')])
+    data = serializers.DateField(format='%Y-%m-%d')
+    arrivi = ArrivoSerializer(many=True)
+    partenze = serializers.ListField(
+        child=serializers.CharField(max_length=20), required=False
+    )
+    dati_struttura = serializers.DictField(child=serializers.IntegerField(), required=False)
+
+
 class CheckinCategoryChoicesSerializer(serializers.ModelSerializer):
     """
     Serializer for the CheckinCategoryChoices model.

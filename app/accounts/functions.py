@@ -866,3 +866,46 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
         return {"error": str(e), "status": "failed"}
     except Exception as e:
         return {"error": f"An unexpected error occurred: {str(e)}", "status": "failed"}
+
+
+def generate_dms_puglia_xml(data, vendor):
+    root = ET.Element("movimenti", attrib={
+        'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
+        'xsi:noNamespaceSchemaLocation': "movimentogiornaliero-0.6.xsd",
+        'vendor': vendor
+    })
+
+    for movimento in data.get('movimenti', []):
+        movimento_el = ET.SubElement(root, "movimento", attrib={
+            'type': movimento['type'],
+            'data': movimento['data']
+        })
+
+        arrivi_el = ET.SubElement(movimento_el, "arrivi")
+        for arrivo in movimento.get('arrivi', []):
+            arrivo_el = ET.SubElement(arrivi_el, "arrivo")
+            for key, value in arrivo.items():
+                if key != 'componenti':
+                    ET.SubElement(arrivo_el, key).text = str(value)
+
+            # Add 'componenti'
+            if 'componenti' in arrivo:
+                componenti_el = ET.SubElement(arrivo_el, "componenti")
+                for componente in arrivo['componenti']:
+                    componente_el = ET.SubElement(componenti_el, "componente")
+                    for comp_key, comp_value in componente.items():
+                        ET.SubElement(componente_el, comp_key).text = str(comp_value)
+
+        # Add 'partenze'
+        if movimento.get('partenze'):
+            partenze_el = ET.SubElement(movimento_el, "partenze")
+            for partenza in movimento['partenze']:
+                ET.SubElement(partenze_el, "codiceclientesr").text = partenza
+
+        # Add 'datistruttura'
+        if movimento.get('datistruttura'):
+            datistruttura_el = ET.SubElement(movimento_el, "datistruttura")
+            for key, value in movimento['datistruttura'].items():
+                ET.SubElement(datistruttura_el, key).text = str(value)
+
+    return ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")

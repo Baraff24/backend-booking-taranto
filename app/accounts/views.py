@@ -1,9 +1,14 @@
 """
 This module contains the views of the accounts app.
 """
+import io
+
 import pytz
 import stripe
 import xml.etree.ElementTree as ET
+
+from django.http import FileResponse
+
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
 from .filters import ReservationFilter
 from .functions import (is_active, is_admin, calculate_total_cost, calculate_discount,
@@ -11,7 +16,7 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         cancel_reservation_and_remove_event,
                         is_room_available, handle_checkout_session_completed, parse_soap_response,
                         get_or_create_token, build_soap_envelope,
-                        send_soap_request, send_account_deletion_email, WhatsAppService)
+                        send_soap_request, send_account_deletion_email, WhatsAppService, generate_dms_puglia_xml)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
     UserAllogiatiWeb, CheckinCategoryChoices
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
@@ -20,7 +25,7 @@ from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSe
                           StructureImageSerializer, AvailableRoomsForDatesSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
                           AuthenticationTestSerializer, SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer,
-                          SendWhatsAppToAllUsersSerializer, SchedinaSerializer)
+                          SendWhatsAppToAllUsersSerializer, SchedinaSerializer, MovimentoSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -1186,6 +1191,30 @@ class SendElencoSchedineAPI(APIView):
         except Exception as e:
             return Response({"error": f"An unexpected error occurred: {str(e)}"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DownloadDmsPugliaXmlAPI(APIView):
+    """
+    API to download the DMS Puglia XML file for the Movimenti.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = MovimentoSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = MovimentoSerializer(data=request.data)
+        if serializer.is_valid():
+            # Generate XML content
+            xml_content = generate_dms_puglia_xml(serializer.validated_data, vendor="XXXXX")
+
+            # Convert XML content to bytes
+            xml_file = io.BytesIO(xml_content.encode('utf-8'))
+
+            # Create a response with FileResponse
+            response = FileResponse(xml_file, content_type='application/xml')
+            response['Content-Disposition'] = 'attachment; filename="movimenti.xml"'
+            return response
+        else:
+            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CheckinCategoryChoicesAPI(APIView):
