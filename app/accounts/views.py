@@ -1208,12 +1208,14 @@ class DownloadDmsPugliaXmlAPI(APIView):
 
             # Convert XML content to bytes
             xml_file = io.BytesIO(xml_content.encode('utf-8'))
+            xml_file.seek(0) # Reset the file pointer
 
             # Create a response with FileResponse
+            filename = f'dms_puglia_movimenti_{datetime.now().strftime("%Y%m%d%H%M%S")}.xml'
             response = FileResponse(
                 xml_file,
                 as_attachment=True,
-                filename='dms_puglia_movimenti' + datetime.now().strftime('%Y%m%d%H%M%S') + '.xml',
+                filename=filename,
                 content_type='application/xml'
             )
             return response
