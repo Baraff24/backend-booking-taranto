@@ -1210,8 +1210,12 @@ class DownloadDmsPugliaXmlAPI(APIView):
             xml_file = io.BytesIO(xml_content.encode('utf-8'))
 
             # Create a response with FileResponse
-            response = FileResponse(xml_file, content_type='application/xml')
-            response['Content-Disposition'] = 'attachment; filename="movimenti.xml"'
+            response = FileResponse(
+                xml_file,
+                as_attachment=True,
+                filename='dms_puglia_movimenti' + datetime.now().strftime('%Y%m%d%H%M%S') + '.xml',
+                content_type='application/xml'
+            )
             return response
         else:
             return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
