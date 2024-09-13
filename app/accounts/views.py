@@ -1201,29 +1201,37 @@ class DownloadDmsPugliaXmlAPI(APIView):
     serializer_class = MovimentoSerializer
 
     @method_decorator(is_active)
-    @method_decorator(is_admin)
     def post(self, request, *args, **kwargs):
-        serializer = MovimentoSerializer(data=request.data)
-        if serializer.is_valid():
-            # Generate XML content
-            xml_content = generate_dms_puglia_xml(serializer.validated_data, vendor="XXXXX")
+        try:
+            serializer = MovimentoSerializer(data=request.data)
+            if serializer.is_valid():
+                try:
+                    # Generate XML content
+                    xml_content = generate_dms_puglia_xml(serializer.validated_data, vendor="XXXXX")
 
-            # Convert XML content to bytes
-            xml_file = io.BytesIO(xml_content.encode('utf-8'))
-            xml_file.seek(0) # Reset the file pointer
+                    # Convert XML content to bytes
+                    xml_file = io.BytesIO(xml_content.encode('utf-8'))
+                    xml_file.seek(0)  # Reset the file pointer
 
-            # Create a response with FileResponse
-            filename = f'dms_puglia_movimenti_{datetime.now().strftime("%Y%m%d%H%M%S")}.xml'
-            response = FileResponse(
-                xml_file,
-                as_attachment=True,
-                filename=filename,
-                content_type='application/xml'
-            )
-            return response
-        else:
-            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                    # Create a response with FileResponse
+                    filename = f'dms_puglia_movimenti_{datetime.now().strftime("%Y%m%d%H%M%S")}.xml'
+                    response = FileResponse(
+                        xml_file,
+                        as_attachment=True,
+                        filename=filename,
+                        content_type='application/xml'
+                    )
+                    return response
 
+                except Exception as e:
+                    print(f"Error generating file response: {e}")
+                    return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CheckinCategoryChoicesAPI(APIView):
     """

@@ -462,6 +462,7 @@ class ComponenteSerializer(serializers.Serializer):
     occupazione_posto_letto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
     eta = serializers.IntegerField(min_value=0)
 
+
 # Serializer for Puglia DMS
 class ArrivoSerializer(serializers.Serializer):
     codice_cliente_sr = serializers.CharField(max_length=20)
@@ -478,6 +479,7 @@ class ArrivoSerializer(serializers.Serializer):
     motivazioni_viaggio = serializers.CharField(max_length=50, required=False)
     componenti = ComponenteSerializer(many=True, required=False)
 
+
 # Serializer for Puglia DMS
 class MovimentoSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=[('MP', 'Movement')])
@@ -487,7 +489,6 @@ class MovimentoSerializer(serializers.Serializer):
         child=serializers.CharField(max_length=20), required=False
     )
     dati_struttura = serializers.DictField(child=serializers.IntegerField(), required=False)
-
 
 
 class CheckinCategoryChoicesSerializer(serializers.ModelSerializer):

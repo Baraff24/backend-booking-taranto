@@ -869,51 +869,61 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
 
 
 def generate_dms_puglia_xml(data, vendor):
-    root = ET.Element("movimenti", attrib={
-        'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
-        'xsi:noNamespaceSchemaLocation': "movimentogiornaliero-0.6.xsd",
-        'vendor': vendor
-    })
-
-    for movimento in data:
-        movimento_el = ET.SubElement(root, "movimento", attrib={
-            'type': movimento['type'],
-            'data': movimento['data']
+    try:
+        root = ET.Element("movimenti", attrib={
+            'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
+            'xsi:noNamespaceSchemaLocation': "movimentogiornaliero-0.6.xsd",
+            'vendor': vendor
         })
 
-        # Handle Arrivi
-        if movimento.get('arrivi'):
-            arrivi_el = ET.SubElement(movimento_el, "arrivi")
-            for arrivo in movimento['arrivi']:
-                arrivo_el = ET.SubElement(arrivi_el, "arrivo")
-                ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
-                ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso")
-                ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza")
-                ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
-                ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto")
-                ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse")
-                ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato")
-                ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
-                ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
+        for movimento in data.get('movimenti', []):
+            try:
+                movimento_el = ET.SubElement(root, "movimento", attrib={
+                    'type': movimento['type'],
+                    'data': movimento['data']
+                })
 
-                # Handle Componenti
-                if 'componenti' in arrivo:
-                    componenti_el = ET.SubElement(arrivo_el, "componenti")
-                    for componente in arrivo['componenti']:
-                        componente_el = ET.SubElement(componenti_el, "componente")
-                        for key, value in componente.items():
-                            ET.SubElement(componente_el, key).text = str(value)
+                # Handle Arrivi
+                if movimento.get('arrivi'):
+                    arrivi_el = ET.SubElement(movimento_el, "arrivi")
+                    for arrivo in movimento['arrivi']:
+                        arrivo_el = ET.SubElement(arrivi_el, "arrivo")
+                        ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
+                        ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso")
+                        ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza")
+                        ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
+                        ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto")
+                        ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse")
+                        ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato")
+                        ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
+                        ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
 
-        # Handle Partenze
-        if movimento.get('partenze'):
-            partenze_el = ET.SubElement(movimento_el, "partenze")
-            for partenza in movimento['partenze']:
-                ET.SubElement(partenze_el, "codiceclientesr").text = partenza
+                        # Handle Componenti
+                        if 'componenti' in arrivo:
+                            componenti_el = ET.SubElement(arrivo_el, "componenti")
+                            for componente in arrivo['componenti']:
+                                componente_el = ET.SubElement(componenti_el, "componente")
+                                for key, value in componente.items():
+                                    ET.SubElement(componente_el, key).text = str(value)
 
-        # Handle Dati Struttura
-        if movimento.get('dati_struttura'):
-            datistruttura_el = ET.SubElement(movimento_el, "datistruttura")
-            for key, value in movimento['dati_struttura'].items():
-                ET.SubElement(datistruttura_el, key).text = str(value)
+                # Handle Partenze
+                if movimento.get('partenze'):
+                    partenze_el = ET.SubElement(movimento_el, "partenze")
+                    for partenza in movimento['partenze']:
+                        ET.SubElement(partenze_el, "codiceclientesr").text = partenza
 
-    return ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+                # Handle Dati Struttura
+                if movimento.get('dati_struttura'):
+                    datistruttura_el = ET.SubElement(movimento_el, "datistruttura")
+                    for key, value in movimento['dati_struttura'].items():
+                        ET.SubElement(datistruttura_el, key).text = str(value)
+
+            except Exception as e:
+                print(f"Error processing movimento: {e}")
+                raise serializers.ValidationError(f"Error processing movimento: {e}")
+
+        return ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+
+    except Exception as e:
+        print(f"Error generating XML: {e}")
+        raise serializers.ValidationError(f"Error generating XML: {e}")
