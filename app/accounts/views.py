@@ -1200,6 +1200,8 @@ class DownloadDmsPugliaXmlAPI(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = MovimentoSerializer
 
+    @method_decorator(is_active)
+    @method_decorator(is_admin)
     def post(self, request, *args, **kwargs):
         serializer = MovimentoSerializer(data=request.data)
         if serializer.is_valid():
