@@ -11,6 +11,7 @@ from functools import wraps
 import requests
 from decouple import config
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db.models import Q
@@ -31,7 +32,8 @@ from allauth.account.models import EmailAddress
 from twilio.rest import Client
 
 from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
-from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAllogiatiWeb, TokenInfoAllogiatiWeb
+from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAllogiatiWeb, TokenInfoAllogiatiWeb, \
+    DmsPugliaXml
 from accounts.serializers import ReservationSerializer
 from config.settings.base import (TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID,
                                   ALLOGGIATI_WEB_URL, TWILIO_NUMBER, REDIS_BACKEND, OWNER_PHONE_NUMBER)
@@ -869,58 +871,108 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
 
 
 def generate_dms_puglia_xml(data, vendor):
+    """
+        Check if the XML in DmsPugliaXml instance exists
+        for the given date in the DB, and either append
+        to it or create a new one.
+        """
     try:
-        root = ET.Element("movimenti", attrib={
-            'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
-            'xsi:noNamespaceSchemaLocation': "movimentogiornaliero-0.6.xsd",
-            'vendor': vendor
-        })
+        movimento_data = data['data'].strftime('%Y-%m-%d')
 
-        # Directly process the 'movimento' from the data
-        movimento = data  # As the input is a single 'movimento'
+        # Query the database to check if there's already an XML for the given date
+        existing_dms_instance = DmsPugliaXml.objects.filter(xml__contains=f'data="{movimento_data}"').first()
 
-        movimento_el = ET.SubElement(root, "movimento", attrib={
-            'type': movimento['type'],
-            'data': movimento['data'].strftime('%Y-%m-%d')  # Convert date to string
-        })
+        if existing_dms_instance:
+            # Load the existing XML
+            try:
+                existing_xml_content = existing_dms_instance.xml.read().decode('utf-8')
+                tree = ET.ElementTree(ET.fromstring(existing_xml_content))
+                root = tree.getroot()
 
-        # Handle Arrivi
-        if movimento.get('arrivi'):
-            arrivi_el = ET.SubElement(movimento_el, "arrivi")
-            for arrivo in movimento['arrivi']:
-                arrivo_el = ET.SubElement(arrivi_el, "arrivo")
-                ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
-                ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso")
-                ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza")
-                ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
-                ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto")
-                ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse")
-                ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato")
-                ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
-                ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
+                # Find the movimento with the matching 'data'
+                movimento_el = None
+                for movimento in root.findall('movimento'):
+                    if movimento.get('data') == movimento_data:
+                        movimento_el = movimento
+                        break
 
-                # Handle Componenti
-                if 'componenti' in arrivo:
-                    componenti_el = ET.SubElement(arrivo_el, "componenti")
-                    for componente in arrivo['componenti']:
-                        componente_el = ET.SubElement(componenti_el, "componente")
-                        for key, value in componente.items():
-                            ET.SubElement(componente_el, key).text = str(value)
+                if not movimento_el:
+                    # If no movimento exists for the date, create a new one
+                    movimento_el = ET.SubElement(root, 'movimento', attrib={
+                        'type': data['type'],
+                        'data': movimento_data
+                    })
 
-        # Handle Partenze
-        if movimento.get('partenze'):
-            partenze_el = ET.SubElement(movimento_el, "partenze")
-            for partenza in movimento['partenze']:
-                ET.SubElement(partenze_el, "codiceclientesr").text = partenza
+                # Add <arrivo> to the movimento
+                arrivi_el = movimento_el.find('arrivi')
+                if arrivi_el is None:
+                    arrivi_el =ET.SubElement(movimento_el, 'arrivi')
 
-        # Handle Dati Struttura
-        if movimento.get('dati_struttura'):
-            datistruttura_el = ET.SubElement(movimento_el, "datistruttura")
-            for key, value in movimento['dati_struttura'].items():
-                ET.SubElement(datistruttura_el, key).text = str(value)
+                for arrivo in data['arrivi']:
+                    arrivo_el = ET.SubElement(arrivi_el, "arrivo")
+                    ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
+                    ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso")
+                    ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza")
+                    ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
+                    ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto")
+                    ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse")
+                    ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato")
+                    ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
+                    ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
 
-        return ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+                # Save updated XML to the DB
+                try:
+                    updated_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+                    existing_dms_instance.xml.save(f'dms_puglia_movimenti_{movimento_data}.xml',
+                                                   ContentFile(updated_xml_content), save=True)
+                except Exception as e:
+                    print(f"Error saving updated XML: {e}")
+                    raise
+
+            except ET.ParseError as e:
+                print(f"Error parsing existing XML: {e}")
+                raise
+            except Exception as e:
+                print(f"Error processing existing XML: {e}")
+                raise
+
+        else:
+            try:
+                # Create new XML and save it to the DB
+                root = ET.Element("movimenti", attrib={
+                    'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
+                    'xsi:noNamespaceSchemaLocation': "movimentogiornaliero-0.6.xsd",
+                    'vendor': vendor
+                })
+
+                movimento_el = ET.SubElement(root, "movimento", attrib={
+                    'type': data['type'],
+                    'data': movimento_data
+                })
+
+                arrivi_el = ET.SubElement(movimento_el, "arrivi")
+                for arrivo in data['arrivi']:
+                    arrivo_el = ET.SubElement(arrivi_el, "arrivo")
+                    ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
+                    ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso")
+                    ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza")
+                    ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
+                    ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto")
+                    ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse")
+                    ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato")
+                    ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
+                    ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
+
+                # Save new XML to the DB
+                new_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+                dms_instance = DmsPugliaXml()
+                dms_instance.xml.save(f'dms_puglia_movimenti_{movimento_data}.xml', ContentFile(new_xml_content),
+                                      save=True)
+
+            except Exception as e:
+                print(f"Error creating new XML: {e}")
+                raise
 
     except Exception as e:
-        print(f"Error generating XML: {e}")
-        raise Exception("Error generating XML")
+        print(f"Unexpected error in add_or_update_movimento_in_db: {e}")
+        raise

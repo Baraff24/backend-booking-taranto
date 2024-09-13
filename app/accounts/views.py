@@ -1270,7 +1270,7 @@ class DownloadDmsPugliaXmlFileAPI(APIView):
     @staticmethod
     def get_object(pk):
         """
-        Get the user object by primary
+        Get the DmsPugliaXml object by primary
         """
         try:
             return DmsPugliaXml.objects.get(pk=pk)
