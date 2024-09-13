@@ -7,6 +7,7 @@ import pytz
 import stripe
 import xml.etree.ElementTree as ET
 
+from django.core.files.base import ContentFile
 from django.http import FileResponse
 
 from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
@@ -15,17 +16,18 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         get_google_calendar_service, get_busy_dates_from_reservations,
                         cancel_reservation_and_remove_event,
                         is_room_available, handle_checkout_session_completed, parse_soap_response,
-                        get_or_create_token, build_soap_envelope,
+                        build_soap_envelope,
                         send_soap_request, send_account_deletion_email, WhatsAppService, generate_dms_puglia_xml)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
-    UserAllogiatiWeb, CheckinCategoryChoices
+    CheckinCategoryChoices, DmsPugliaXml
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
                           RoomSerializer, ReservationSerializer, DiscountSerializer,
                           CreateCheckoutSessionSerializer, EmailSerializer, StructureRoomSerializer,
                           StructureImageSerializer, AvailableRoomsForDatesSerializer,
                           CancelReservationSerializer, CalculateDiscountSerializer, RoomImageSerializer,
-                          AuthenticationTestSerializer, SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer,
-                          SendWhatsAppToAllUsersSerializer, SchedinaSerializer, MovimentoSerializer)
+                          SendElencoSchedineSerializer, CheckinCategoryChoicesSerializer,
+                          SendWhatsAppToAllUsersSerializer, SchedinaSerializer, MovimentoSerializer,
+                          DmsPugliaXmlSerializer)
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -1193,9 +1195,9 @@ class SendElencoSchedineAPI(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class DownloadDmsPugliaXmlAPI(APIView):
+class UploadDataDmsPugliaXmlAPI(APIView):
     """
-    API to download the DMS Puglia XML file for the Movimenti.
+    API to generate and upload the DMS Puglia XML file for the Movimenti.
     """
     permission_classes = [IsAuthenticated]
     serializer_class = MovimentoSerializer
@@ -1203,28 +1205,30 @@ class DownloadDmsPugliaXmlAPI(APIView):
     @method_decorator(is_active)
     def post(self, request, *args, **kwargs):
         try:
+            # Validate the incoming data with the serializer
             serializer = MovimentoSerializer(data=request.data)
             if serializer.is_valid():
                 try:
                     # Generate XML content
                     xml_content = generate_dms_puglia_xml(serializer.validated_data, vendor="XXXXX")
 
-                    # Convert XML content to bytes
+                    # Convert XML content to bytes for file-like storage
                     xml_file = io.BytesIO(xml_content.encode('utf-8'))
                     xml_file.seek(0)  # Reset the file pointer
 
-                    # Create a response with FileResponse
+                    # Create a DmsPugliaXml model instance and save the file
+                    dms_instance = DmsPugliaXml()
                     filename = f'dms_puglia_movimenti_{datetime.now().strftime("%Y%m%d%H%M%S")}.xml'
-                    response = FileResponse(
-                        xml_file,
-                        as_attachment=True,
-                        filename=filename,
-                        content_type='application/xml'
-                    )
-                    return response
+
+                    # Save the file to the model's FileField
+                    dms_instance.xml.save(filename, ContentFile(xml_file.read()), save=True)
+
+                    # Serialize and return the saved instance
+                    dms_serializer = DmsPugliaXmlSerializer(dms_instance)
+                    return Response(dms_serializer.data, status=status.HTTP_201_CREATED)
 
                 except Exception as e:
-                    print(f"Error generating file response: {e}")
+                    print(f"Error saving file: {e}")
                     return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
                 return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -1232,6 +1236,69 @@ class DownloadDmsPugliaXmlAPI(APIView):
         except Exception as e:
             print(f"Unexpected error: {e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ListDmsPugliaXmlFilesAPI(APIView):
+    """
+    API to list all the available DMS Puglia XML files.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = DmsPugliaXmlSerializer
+
+    @method_decorator(is_active)
+    def get(self, request, *args, **kwargs):
+        try:
+            # Query all XML files in the DmsPugliaXml model
+            xml_files = DmsPugliaXml.objects.all()
+
+            # Serialize the data
+            serializer = self.serializer_class(xml_files, many=True)
+
+            # Return the serialized data
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DownloadDmsPugliaXmlFileAPI(APIView):
+    """
+    API to download the DMS Puglia XML file.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def get_object(pk):
+        """
+        Get the user object by primary
+        """
+        try:
+            return DmsPugliaXml.objects.get(pk=pk)
+        except ObjectDoesNotExist:
+            return None
+
+    @method_decorator(is_active)
+    def get(self, request, pk, *args, **kwargs):
+        try:
+            # Get the DmsPugliaXml instance by primary key (id)
+            dms_puglia_xml = self.get_object(pk=pk)
+
+            # Ensure that the file exists before responding
+            if not dms_puglia_xml.xml:
+                return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Create a response with FileResponse for streaming the file
+            response = FileResponse(dms_puglia_xml.xml.open(), content_type='application/xml')
+            response['Content-Disposition'] = f'attachment; filename="{dms_puglia_xml.xml.name}"'
+
+            return response
+
+        except DmsPugliaXml.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"An unexpected error occurred: {str(e)}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CheckinCategoryChoicesAPI(APIView):
     """

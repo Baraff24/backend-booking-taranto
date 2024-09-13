@@ -4,33 +4,6 @@ info:
   version: 1.0.0
   description: GM Apartments Booking Taranto APIs
 paths:
-  /api/v1/accounts/auth-test-alloggiati-web/:
-    post:
-      operationId: accounts_auth_test_alloggiati_web_create
-      description: Handles POST requests to validate an authentication token.
-      tags:
-      - accounts
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthenticationTest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/AuthenticationTest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/AuthenticationTest'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthenticationTest'
-          description: ''
   /api/v1/accounts/cancel-reservation/:
     post:
       operationId: accounts_cancel_reservation_create
@@ -283,6 +256,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/accounts/download-dms-puglia-xml-file/{id}/:
+    get:
+      operationId: accounts_download_dms_puglia_xml_file_retrieve
+      description: API to download the DMS Puglia XML file.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/accounts/google-calendar/init/:
     get:
       operationId: accounts_google_calendar_init_retrieve
@@ -304,6 +294,21 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/accounts/list-dms-puglia-xml-files/:
+    get:
+      operationId: accounts_list_dms_puglia_xml_files_retrieve
+      description: API to list all the available DMS Puglia XML files.
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DmsPugliaXml'
+          description: ''
   /api/v1/accounts/reservations/:
     get:
       operationId: accounts_reservations_list
@@ -814,7 +819,7 @@ paths:
   /api/v1/accounts/send-elenco-schedine/:
     post:
       operationId: accounts_send_elenco_schedine_create
-      description: Handles POST requests to validate and send the Elenco Schedine.
+      description: API View to send the Elenco Schedine to the DMS.
       tags:
       - accounts
       requestBody:
@@ -1150,6 +1155,33 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/accounts/upload-data-dms-puglia-xml/:
+    post:
+      operationId: accounts_upload_data_dms_puglia_xml_create
+      description: API to generate and upload the DMS Puglia XML file for the Movimenti.
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movimento'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Movimento'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Movimento'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movimento'
+          description: ''
   /api/v1/accounts/users/:
     get:
       operationId: accounts_users_retrieve
@@ -1222,7 +1254,7 @@ paths:
       operationId: accounts_users_destroy
       description: |-
         Delete the user instance by primary key.
-        It is not a physical delete, but a logical delete (change of status).
+        It is a physical delete.
         The user can only delete their profile if they have no active reservations.
       parameters:
       - in: path
@@ -1584,13 +1616,54 @@ paths:
           description: ''
 components:
   schemas:
-    AuthenticationTest:
+    Arrivo:
       type: object
       properties:
-        structure_id:
+        codice_cliente_sr:
+          type: string
+          maxLength: 20
+        sesso:
+          $ref: '#/components/schemas/SessoE07Enum'
+        cittadinanza:
+          type: string
+          maxLength: 9
+        comune_residenza:
+          type: string
+          maxLength: 9
+        occupazione_postoletto:
+          $ref: '#/components/schemas/OccupazionePostoLettoEnum'
+        dayuse:
+          $ref: '#/components/schemas/OccupazionePostoLettoEnum'
+        tipologia_alloggiato:
+          type: string
+          maxLength: 2
+        eta:
           type: integer
+          minimum: 0
+        durata_soggiorno:
+          type: integer
+          minimum: 1
+        mezzo_trasporto_arrivo:
+          type: string
+          maxLength: 50
+        mezzo_trasporto_movimento:
+          type: string
+          maxLength: 50
+        motivazioni_viaggio:
+          type: string
+          maxLength: 50
+        componenti:
+          type: array
+          items:
+            $ref: '#/components/schemas/Componente'
       required:
-      - structure_id
+      - cittadinanza
+      - codice_cliente_sr
+      - dayuse
+      - eta
+      - occupazione_postoletto
+      - sesso
+      - tipologia_alloggiato
     AvailableRoomsForDates:
       type: object
       description: Serializer for rooms available for specific dates.
@@ -1695,6 +1768,36 @@ components:
           type: string
           nullable: true
           maxLength: 20
+        has_accepted_terms:
+          type: boolean
+    Componente:
+      type: object
+      properties:
+        codice_cliente_sr:
+          type: string
+          maxLength: 20
+        sesso:
+          $ref: '#/components/schemas/SessoE07Enum'
+        cittadinanza:
+          type: string
+          maxLength: 9
+        paese_residenza:
+          type: string
+          maxLength: 9
+        comune_residenza:
+          type: string
+          maxLength: 9
+        occupazione_posto_letto:
+          $ref: '#/components/schemas/OccupazionePostoLettoEnum'
+        eta:
+          type: integer
+          minimum: 0
+      required:
+      - cittadinanza
+      - codice_cliente_sr
+      - eta
+      - occupazione_posto_letto
+      - sesso
     CreateCheckoutSession:
       type: object
       description: Serializer for creating a Stripe checkout session.
@@ -1762,6 +1865,24 @@ components:
       - numbers_of_nights
       - rooms
       - start_date
+    DmsPugliaXml:
+      type: object
+      description: Serializer for the DmsPugliaXml model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        xml:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - xml
     Email:
       type: object
       description: Serializer for the email field.
@@ -1771,6 +1892,44 @@ components:
           format: email
       required:
       - email
+    Movimento:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/MovimentoTypeEnum'
+        data:
+          type: string
+          format: date
+        arrivi:
+          type: array
+          items:
+            $ref: '#/components/schemas/Arrivo'
+        partenze:
+          type: array
+          items:
+            type: string
+            maxLength: 20
+        dati_struttura:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - arrivi
+      - data
+      - type
+    MovimentoTypeEnum:
+      enum:
+      - MP
+      type: string
+      description: '* `MP` - Movement'
+    OccupazionePostoLettoEnum:
+      enum:
+      - si
+      - 'no'
+      type: string
+      description: |-
+        * `si` - Yes
+        * `no` - No
     PasswordReset:
       type: object
       description: Serializer for requesting a password reset e-mail.
@@ -2185,7 +2344,7 @@ components:
           type: string
           maxLength: 30
         sesso:
-          $ref: '#/components/schemas/SessoEnum'
+          $ref: '#/components/schemas/SchedinaSessoEnum'
         data_nascita:
           type: string
           format: date
@@ -2213,18 +2372,21 @@ components:
       required:
       - cittadinanza
       - cognome
-      - comune_nascita
       - data_arrivo
       - data_nascita
-      - luogo_rilascio_documento
       - nome
-      - numero_documento
       - numero_giorni_permanenza
-      - provincia_nascita
       - sesso
       - stato_nascita
       - tipo_alloggiati
-      - tipo_documento
+    SchedinaSessoEnum:
+      enum:
+      - '1'
+      - '2'
+      type: string
+      description: |-
+        * `1` - M
+        * `2` - F
     SendElencoSchedine:
       type: object
       description: Serializer for generating XML and sending it to a DMS.
@@ -2246,14 +2408,14 @@ components:
       - structure_id
       - token
       - utente
-    SessoEnum:
+    SessoE07Enum:
       enum:
-      - '1'
-      - '2'
+      - M
+      - F
       type: string
       description: |-
-        * `1` - M
-        * `2` - F
+        * `M` - Male
+        * `F` - Female
     Structure:
       type: object
       description: Serializer for the Structure model.
@@ -2354,14 +2516,6 @@ components:
           writeOnly: true
       required:
       - token
-    TypeEnum:
-      enum:
-      - CUSTOMER
-      - ADMIN
-      type: string
-      description: |-
-        * `CUSTOMER` - Customer
-        * `ADMIN` - Admin
     User:
       type: object
       description: Serializer for the User model.
@@ -2417,7 +2571,9 @@ components:
         status:
           $ref: '#/components/schemas/UserStatusEnum'
         type:
-          $ref: '#/components/schemas/TypeEnum'
+          $ref: '#/components/schemas/UserTypeEnum'
+        has_accepted_terms:
+          type: boolean
         groups:
           type: array
           items:
@@ -2441,6 +2597,14 @@ components:
       description: |-
         * `COMPLETE` - Complete
         * `PENDING_EXTRA_DATA` - Pending Complete Data
+    UserTypeEnum:
+      enum:
+      - CUSTOMER
+      - ADMIN
+      type: string
+      description: |-
+        * `CUSTOMER` - Customer
+        * `ADMIN` - Admin
     VerifyEmail:
       type: object
       properties:

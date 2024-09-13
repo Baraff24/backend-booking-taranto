@@ -6,7 +6,7 @@ from django.contrib.auth.admin import UserAdmin
 from .models import (User, Structure, Room, RoomImage,
                      Reservation, Discount, GoogleOAuthCredentials,
                      StructureImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb,
-                     CheckinCategoryChoices)
+                     CheckinCategoryChoices, DmsPugliaXml)
 
 
 class CustomUserAdmin(UserAdmin):
@@ -42,3 +42,4 @@ admin.site.register(Discount)
 admin.site.register(CheckinCategoryChoices)
 admin.site.register(UserAllogiatiWeb)
 admin.site.register(TokenInfoAllogiatiWeb)
+admin.site.register(DmsPugliaXml)

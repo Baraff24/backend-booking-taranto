@@ -9,7 +9,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
 from .models import (User, Structure, Room, Reservation, Discount,
                      StructureImage, RoomImage, UserAllogiatiWeb,
-                     TokenInfoAllogiatiWeb, CheckinCategoryChoices)
+                     TokenInfoAllogiatiWeb, CheckinCategoryChoices, DmsPugliaXml)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -498,6 +498,16 @@ class CheckinCategoryChoicesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CheckinCategoryChoices
+        fields = '__all__'
+
+
+class DmsPugliaXmlSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the DmsPugliaXml model.
+    """
+
+    class Meta:
+        model = DmsPugliaXml
         fields = '__all__'
 
 

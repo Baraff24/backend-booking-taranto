@@ -13,7 +13,7 @@ from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     DeleteStructureImageAPI, CancelReservationAPI, CheckinCategoryChoicesAPI,
                     RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI,
                     GetRoomImagesAPI, AddRoomImageAPI, DeleteRoomImageAPI,
-                    DownloadDmsPugliaXmlAPI)
+                    UploadDataDmsPugliaXmlAPI, ListDmsPugliaXmlFilesAPI, DownloadDmsPugliaXmlFileAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -46,7 +46,9 @@ urlpatterns = [
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
     path('checkin-category-choices/', CheckinCategoryChoicesAPI.as_view(), name='checkin-category-choices'),
     path('send-elenco-schedine/', SendElencoSchedineAPI.as_view(), name='send-elenco-schedine'),
-    path('download-dms-puglia-xml/', DownloadDmsPugliaXmlAPI.as_view(), name='download-dms-puglia-xml'),
+    path('upload-data-dms-puglia-xml/', UploadDataDmsPugliaXmlAPI.as_view(), name='upload-data-dms-puglia-xml'),
+    path('list-dms-puglia-xml-files/', ListDmsPugliaXmlFilesAPI.as_view(), name='list-dms-puglia-xml-files'),
+    path('download-dms-puglia-xml-file/<int:pk>/', DownloadDmsPugliaXmlFileAPI.as_view(), name='download-dms-puglia-xml-file'),
     path('stripe-webhook/', StripeWebhook.as_view(), name='stripe-webhook'),
     path('', include(router.urls)),
 ]

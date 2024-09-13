@@ -257,3 +257,17 @@ class CheckinCategoryChoices(models.Model):
 
     def __str__(self):
         return f"{self.descrizione} ({self.codice}) - {self.category}"
+
+
+class DmsPugliaXml(models.Model):
+    """
+    Model representing the DMS Puglia XML.
+    Fields:
+    - xml: XML file for the DMS Puglia
+    - created_at: Timestamp of when the XML was created
+    """
+    xml = models.FileField(upload_to='dms_puglia_xml/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"DMS Puglia XML ({self.created_at})"
