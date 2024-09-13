@@ -876,12 +876,12 @@ def generate_dms_puglia_xml(data, vendor):
             'vendor': vendor
         })
 
-        # Since the input is a single movimento, you don't need to loop over 'movimenti'
-        movimento = data  # Directly use the input data as it's a single movimento
+        # Directly process the 'movimento' from the data
+        movimento = data  # As the input is a single 'movimento'
 
         movimento_el = ET.SubElement(root, "movimento", attrib={
             'type': movimento['type'],
-            'data': movimento['data']
+            'data': movimento['data'].strftime('%Y-%m-%d')  # Convert date to string
         })
 
         # Handle Arrivi
