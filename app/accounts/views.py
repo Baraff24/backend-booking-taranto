@@ -147,7 +147,7 @@ class UserDetailAPI(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if obj.id == request.user.id or request.user.is_superuser:
+        if obj.id == request.user.id or request.user.is_superuser or request.user.type == ADMIN:
             # Send email to the user
             send_account_deletion_email(obj)
 
