@@ -1345,7 +1345,8 @@ class SendWhatsAppToAllUsersAPI(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        message = serializer.validated_data['message']
+        template_sid = serializer.validated_data['template_sid']
+        template_parameters = serializer.validated_data['template_parameters']
         whatsapp_service = WhatsAppService()
         failed_users = []
         successful_jobs = []
@@ -1354,7 +1355,7 @@ class SendWhatsAppToAllUsersAPI(APIView):
         users = User.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact='')
 
         for user in users:
-            job_id = whatsapp_service.queue_message(user.phone_number, message)
+            job_id = whatsapp_service.queue_message(user.phone_number, template_sid, template_parameters)
             if job_id:
                 successful_jobs.append({"user": user.id, "job_id": job_id})
             else:
