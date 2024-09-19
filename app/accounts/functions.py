@@ -143,30 +143,34 @@ class WhatsAppService:
         )
         self.from_whatsapp_number = TWILIO_NUMBER
 
-    def send_message(self, to_number, message):
+    def send_template_message(self, to_number, template_sid, template_parameters):
         """
-        Send a WhatsApp message immediately.
+        Send a WhatsApp message using a Twilio-approved template.
 
         Args:
             to_number (str): The recipient's phone number in E.164 format.
-            message (str): The message to be sent.
+            template_sid (str): The template SID for the message.
+            template_parameters (dict): Parameters to replace in the template.
 
         Returns:
             str: The SID of the sent message or None if failed.
         """
         try:
             msg = self.client.messages.create(
-                body=message,
                 from_=f'whatsapp:{self.from_whatsapp_number}',
-                to=f'whatsapp:{to_number}'
+                to=f'whatsapp:{to_number}',
+                template={
+                    'name': template_sid,
+                    'language': {'code': 'it'},
+                    'components': [{'type': 'body', 'parameters': template_parameters}]
+                }
             )
             return msg.sid
         except Exception as e:
-            # Log the exception here
-            print(f"Failed to send WhatsApp message: {str(e)}")
+            print(f"Failed to send WhatsApp template message: {str(e)}")
             return None
 
-    def queue_message(self, to_number, message):
+    def queue_message(self, to_number, template_sid, template_parameters):
         """
         Queue a WhatsApp message to be sent later via Redis.
 
@@ -182,7 +186,7 @@ class WhatsAppService:
             _, queue = get_redis_connection_and_queue()
 
             # Enqueue the send_message function with its arguments
-            job = queue.enqueue(self.send_message, to_number, message)
+            job = queue.enqueue(self.send_template_message, to_number, template_sid, template_parameters)
             return job.id
         except Exception as e:
             # Log the exception here
@@ -191,53 +195,53 @@ class WhatsAppService:
 
 
 def send_confirmation_checkout_session_completed(reservation):
-    """
-    Sends a WhatsApp message to both the user and the owner when the booking is confirmed.
-
-    Args:
-        reservation (Reservation): The reservation instance that was confirmed.
-
-    Returns:
-        tuple: The job IDs of the queued WhatsApp message tasks for the user and the owner, or (None, None) if failed.
-    """
     try:
         whatsapp_service = WhatsAppService()
 
-        # Construct the detailed message for the user
-        guest_message = (
-            f"Gentile {reservation.user.first_name},\n\n"
-            f"La tua prenotazione con ID {reservation.id} è stata confermata con successo!\n"
-            f"Dettagli della prenotazione:\n"
-            f"- Nome: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
-            f"- Email: {reservation.email_on_reservation}\n"
-            f"- Telefono: {reservation.phone_on_reservation}\n"
-            f"- Struttura: {reservation.room.structure.name}\n"
-            f"- Stanza: {reservation.room.name}\n"
-            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
-            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
-            f"Non vediamo l'ora di accoglierti!\n\n"
-            f"Distinti saluti,\n"
-            f"Il Team"
+        # Prepare template parameters
+        guest_template_parameters = [
+            {"type": "text", "text": reservation.user.first_name},  # {{1}} for guest's first name
+            {"type": "text", "text": str(reservation.id)},  # {{2}} for reservation ID
+            {"type": "text", "text": reservation.first_name_on_reservation},  # {{3}} guest first name
+            {"type": "text", "text": reservation.last_name_on_reservation},  # {{4}} guest last name
+            {"type": "text", "text": reservation.email_on_reservation},  # {{5}} email
+            {"type": "text", "text": reservation.phone_on_reservation},  # {{6}} phone
+            {"type": "text", "text": reservation.room.structure.name},  # {{7}} structure name
+            {"type": "text", "text": reservation.room.name},  # {{8}} room name
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{9}} check-in date
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{10}} check-out date
+        ]
+
+        owner_template_parameters = [
+            {"type": "text", "text": reservation.first_name_on_reservation},  # {{1}} guest first name
+            {"type": "text", "text": reservation.last_name_on_reservation},  # {{2}} guest last name
+            {"type": "text", "text": reservation.email_on_reservation},  # {{3}} email
+            {"type": "text", "text": reservation.phone_on_reservation},  # {{4}} phone
+            {"type": "text", "text": reservation.room.structure.name},  # {{5}} structure name
+            {"type": "text", "text": reservation.room.name},  # {{6}} room name
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{7}} check-in date
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{8}} check-out date
+        ]
+
+        # Define the template SID for confirmation (get this from Twilio Console)
+        guest_template_sid = "send_confirmation_checkout_session_completed_guest"
+
+        # Define the template SID for the owner message
+        owner_template_sid = "send_confirmation_checkout_session_completed_owner"
+
+        # Queue the message for the user
+        job_id = whatsapp_service.queue_message(
+            reservation.phone_on_reservation,
+            guest_template_sid,
+            guest_template_parameters
         )
 
-        # Construct the detailed message for the owner
-        owner_message = (
-            f"Ciao,\n\n"
-            f"Una nuova prenotazione è stata confermata con i seguenti dettagli:\n"
-            f"- Ospite: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
-            f"- Email: {reservation.email_on_reservation}\n"
-            f"- Telefono: {reservation.phone_on_reservation}\n"
-            f"- Struttura: {reservation.room.structure.name}\n"
-            f"- Stanza: {reservation.room.name}\n"
-            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
-            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
-            f"Distinti saluti,\n"
-            f"Il Team"
+        # Queue the message for the owner
+        owner_job_id = whatsapp_service.queue_message(
+            OWNER_PHONE_NUMBER,
+            owner_template_sid,
+            owner_template_parameters
         )
-
-        # Queue the WhatsApp message
-        job_id = whatsapp_service.queue_message(reservation.user.phone_number, guest_message)
-        owner_job_id = whatsapp_service.queue_message(OWNER_PHONE_NUMBER, owner_message)
 
         if job_id and owner_job_id:
             print(f"WhatsApp message queued successfully with job ID: {job_id}")
@@ -247,59 +251,47 @@ def send_confirmation_checkout_session_completed(reservation):
             return None
 
     except Exception as e:
-        # Log the exception here
         print(f"Failed to send WhatsApp confirmation message: {str(e)}")
         return None
 
 
 def send_cancel_reservation_whatsapp_message(reservation):
-    """
-    Sends a WhatsApp message to both the user and the owner when the reservation is canceled.
-
-    Args:
-        reservation (Reservation): The reservation instance that was canceled.
-
-    Returns:
-        tuple: The job IDs of the queued WhatsApp message tasks for the user and the owner, or (None, None) if failed.
-    """
     try:
         whatsapp_service = WhatsAppService()
 
-        # Construct the message for the user
-        guest_message = (
-            f"Gentile {reservation.user.first_name},\n\n"
-            f"La tua prenotazione con ID {reservation.id} è stata annullata con successo.\n"
-            f"Dettagli della prenotazione:\n"
-            f"- Nome: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
-            f"- Email: {reservation.email_on_reservation}\n"
-            f"- Telefono: {reservation.phone_on_reservation}\n"
-            f"- Struttura: {reservation.room.structure.name}\n"
-            f"- Stanza: {reservation.room.name}\n"
-            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
-            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
-            f"Per ulteriore assistenza, non esitare a contattarci.\n\n"
-            f"Distinti saluti,\n"
-            f"Il Team"
+        # Prepare template parameters for guest
+        template_parameters = [
+            {"type": "text", "text": reservation.user.first_name},
+            {"type": "text", "text": str(reservation.id)},
+            {"type": "text", "text": reservation.first_name_on_reservation},
+            {"type": "text", "text": reservation.last_name_on_reservation},
+            {"type": "text", "text": reservation.email_on_reservation},
+            {"type": "text", "text": reservation.phone_on_reservation},
+            {"type": "text", "text": reservation.room.structure.name},
+            {"type": "text", "text": reservation.room.name},
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
+        ]
+
+        # Define the template SID for confirmation (get this from Twilio Console)
+        guest_template_sid = "send_cancel_reservation_whatsapp_message_guest"
+
+        # Define the template SID for the owner message
+        owner_template_sid = "send_cancel_reservation_whatsapp_message_owner"
+
+        # Queue the message for the user
+        job_id = whatsapp_service.queue_message(
+            reservation.phone_on_reservation,
+            guest_template_sid,
+            template_parameters
         )
 
-        # Construct the message for the owner
-        owner_message = (
-            f"Ciao,\n\n"
-            f"La seguente prenotazione è stata annullata:\n"
-            f"- Ospite: {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}\n"
-            f"- Email: {reservation.email_on_reservation}\n"
-            f"- Telefono: {reservation.phone_on_reservation}\n"
-            f"- Struttura: {reservation.room.structure.name}\n"
-            f"- Stanza: {reservation.room.name}\n"
-            f"- Data di check-in: {reservation.check_in.strftime('%d-%m-%Y')}\n"
-            f"- Data di check-out: {reservation.check_out.strftime('%d-%m-%Y')}\n\n"
-            f"Distinti saluti,\n"
-            f"Il Team"
+        # Queue the message for the owner
+        owner_job_id = whatsapp_service.queue_message(
+            OWNER_PHONE_NUMBER,
+            owner_template_sid,
+            template_parameters
         )
-
-        # Queue the WhatsApp message
-        job_id = whatsapp_service.queue_message(reservation.user.phone_number, guest_message)
-        owner_job_id = whatsapp_service.queue_message(OWNER_PHONE_NUMBER, owner_message)
 
         if job_id and owner_job_id:
             print(f"WhatsApp message queued successfully with job ID: {job_id}")
@@ -309,7 +301,6 @@ def send_cancel_reservation_whatsapp_message(reservation):
             return None
 
     except Exception as e:
-        # Log the exception here
         print(f"Failed to send WhatsApp cancellation message: {str(e)}")
         return None
 
@@ -394,7 +385,7 @@ def send_payment_confirmation_email(reservation):
         html_message = get_template('account/stripe/payment_confirmation_email.html').render(context)
         plain_message = strip_tags(html_message)
         from_email = EMAIL
-        to_email = reservation.user.email
+        to_email = reservation.email_on_reservation
 
         send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
     except Exception as e:
@@ -417,7 +408,7 @@ def send_cancel_reservation_email(reservation):
         html_message = get_template('account/stripe/cancel_reservation_email.html').render(context)
         plain_message = strip_tags(html_message)
         from_email = EMAIL
-        to_email = reservation.user.email
+        to_email = reservation.email_on_reservation
 
         send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
     except Exception as e:
@@ -906,7 +897,7 @@ def generate_dms_puglia_xml(data, vendor):
                 # Add <arrivo> to the movimento
                 arrivi_el = movimento_el.find('arrivi')
                 if arrivi_el is None:
-                    arrivi_el =ET.SubElement(movimento_el, 'arrivi')
+                    arrivi_el = ET.SubElement(movimento_el, 'arrivi')
 
                 for arrivo in data['arrivi']:
                     arrivo_el = ET.SubElement(arrivi_el, "arrivo")

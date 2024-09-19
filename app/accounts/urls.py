@@ -14,7 +14,7 @@ from .views import (UsersListAPI, UserDetailAPI, CompleteProfileAPI,
                     RemoveAdminTypeUserAPI, CreateRoomAPI, CalculateDiscountAPI,
                     GetRoomImagesAPI, AddRoomImageAPI, DeleteRoomImageAPI,
                     UploadDataDmsPugliaXmlAPI, ListDmsPugliaXmlFilesAPI, DownloadDmsPugliaXmlFileAPI,
-                    SendWhatsAppToAllUsersAPIView)
+                    SendWhatsAppToAllUsersAPI)
 
 # Create the router and register the viewsets with it.
 router = DefaultRouter()
@@ -44,7 +44,7 @@ urlpatterns = [
     path('room/available-rooms-for-dates/', AvailableRoomsForDatesAPI.as_view(), name='available-rooms-for-dates'),
     path('discount/calculate-discount/', CalculateDiscountAPI.as_view(), name='calculate-discount'),
     path('stripe/create-checkout-session/', CreateCheckoutSessionLinkAPI.as_view(), name='create-checkout-session'),
-    path('send-whatsapp-to-all-users/', SendWhatsAppToAllUsersAPIView.as_view(), name='send-whatsapp-to-all-users'),
+    path('send-whatsapp-to-all-users/', SendWhatsAppToAllUsersAPI.as_view(), name='send-whatsapp-to-all-users'),
     path('cancel-reservation/', CancelReservationAPI.as_view(), name='cancel-reservation'),
     path('checkin-category-choices/', CheckinCategoryChoicesAPI.as_view(), name='checkin-category-choices'),
     path('send-elenco-schedine/', SendElencoSchedineAPI.as_view(), name='send-elenco-schedine'),

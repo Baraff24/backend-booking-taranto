@@ -1328,7 +1328,7 @@ class CheckinCategoryChoicesAPI(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class SendWhatsAppToAllUsersAPIView(APIView):
+class SendWhatsAppToAllUsersAPI(APIView):
     """
     API View to send a WhatsApp message to all users on the site.
     """

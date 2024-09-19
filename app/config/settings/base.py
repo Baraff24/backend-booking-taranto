@@ -252,9 +252,9 @@ STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET')
 ALLOGGIATI_WEB_URL = 'https://alloggiatiweb.poliziadistato.it/service/service.asmx'
 
 # Twilio settings
-TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
-TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
-TWILIO_NUMBER = config('TWILIO_NUMBER', default='')
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN')
+TWILIO_NUMBER = config('TWILIO_NUMBER')
 
 # Telephone number of the owner that need the notification message from whatsapp
-OWNER_PHONE_NUMBER = config('OWNER_PHONE_NUMBER', default='')
+OWNER_PHONE_NUMBER = config('OWNER_PHONE_NUMBER')
