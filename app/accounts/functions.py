@@ -864,10 +864,10 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
 
 def generate_dms_puglia_xml(data, vendor):
     """
-        Check if the XML in DmsPugliaXml instance exists
-        for the given date in the DB, and either append
-        to it or create a new one.
-        """
+    Check if the XML in DmsPugliaXml instance exists for the given date in the DB,
+    and either append to it or create a new one. If 'tipologia_alloggiato' is CAPOGRUPPO
+    or CAPOFAMIGLIA, include the 'componenti' tag.
+    """
     try:
         movimento_data = data['data'].strftime('%Y-%m-%d')
 
@@ -875,7 +875,6 @@ def generate_dms_puglia_xml(data, vendor):
         existing_dms_instance = DmsPugliaXml.objects.filter(xml__contains=f'data="{movimento_data}"').first()
 
         if existing_dms_instance:
-            # Load the existing XML
             try:
                 existing_xml_content = existing_dms_instance.xml.read().decode('utf-8')
                 tree = ET.ElementTree(ET.fromstring(existing_xml_content))
@@ -889,17 +888,16 @@ def generate_dms_puglia_xml(data, vendor):
                         break
 
                 if not movimento_el:
-                    # If no movimento exists for the date, create a new one
                     movimento_el = ET.SubElement(root, 'movimento', attrib={
                         'type': data['type'],
                         'data': movimento_data
                     })
 
-                # Add <arrivo> to the movimento
                 arrivi_el = movimento_el.find('arrivi')
                 if arrivi_el is None:
                     arrivi_el = ET.SubElement(movimento_el, 'arrivi')
 
+                # Handle 'arrivi'
                 for arrivo in data['arrivi']:
                     arrivo_el = ET.SubElement(arrivi_el, "arrivo")
                     ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
@@ -912,20 +910,25 @@ def generate_dms_puglia_xml(data, vendor):
                     ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
                     ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
 
-                # Save updated XML to the DB
-                try:
-                    updated_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
-                    existing_dms_instance.xml.save(f'dms_puglia_movimenti_{movimento_data}.xml',
-                                                   ContentFile(updated_xml_content), save=True)
-                except Exception as e:
-                    print(f"Error saving updated XML: {e}")
-                    raise
+                    # Check if 'tipologia_alloggiato' is CAPOGRUPPO or CAPOFAMIGLIA
+                    if arrivo.get("tipologia_alloggiato") in ["CAPOGRUPPO", "CAPOFAMIGLIA"]:
+                        componenti_el = ET.SubElement(arrivo_el, "componenti")
+                        for componente in arrivo.get("componenti", []):
+                            componente_el = ET.SubElement(componenti_el, "componente")
+                            ET.SubElement(componente_el, "codice_cliente_sr").text = componente.get("codice_cliente_sr")
+                            ET.SubElement(componente_el, "sesso").text = componente.get("sesso")
+                            ET.SubElement(componente_el, "cittadinanza").text = componente.get("cittadinanza")
+                            ET.SubElement(componente_el, "paeseresidenza").text = componente.get("paeseresidenza", "")
+                            ET.SubElement(componente_el, "comune_residenza").text = componente.get("comune_residenza", "")
+                            ET.SubElement(componente_el, "occupazione_postoletto").text = componente.get("occupazione_postoletto")
+                            ET.SubElement(componente_el, "eta").text = str(componente.get("eta"))
 
-            except ET.ParseError as e:
-                print(f"Error parsing existing XML: {e}")
-                raise
+                # Save updated XML to the DB
+                updated_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+                existing_dms_instance.xml.save(f'dms_puglia_movimenti_{movimento_data}.xml', ContentFile(updated_xml_content), save=True)
+
             except Exception as e:
-                print(f"Error processing existing XML: {e}")
+                print(f"Error processing or saving existing XML: {e}")
                 raise
 
         else:
@@ -955,16 +958,28 @@ def generate_dms_puglia_xml(data, vendor):
                     ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
                     ET.SubElement(arrivo_el, "durata_soggiorno").text = str(arrivo.get("durata_soggiorno", 0))
 
+                    # Check if 'tipologia_alloggiato' is CAPOGRUPPO or CAPOFAMIGLIA
+                    if arrivo.get("tipologia_alloggiato") in ["CAPOGRUPPO", "CAPOFAMIGLIA"]:
+                        componenti_el = ET.SubElement(arrivo_el, "componenti")
+                        for componente in arrivo.get("componenti", []):
+                            componente_el = ET.SubElement(componenti_el, "componente")
+                            ET.SubElement(componente_el, "codice_cliente_sr").text = componente.get("codice_cliente_sr")
+                            ET.SubElement(componente_el, "sesso").text = componente.get("sesso")
+                            ET.SubElement(componente_el, "cittadinanza").text = componente.get("cittadinanza")
+                            ET.SubElement(componente_el, "paeseresidenza").text = componente.get("paeseresidenza", "")
+                            ET.SubElement(componente_el, "comune_residenza").text = componente.get("comune_residenza", "")
+                            ET.SubElement(componente_el, "occupazione_postoletto").text = componente.get("occupazione_postoletto")
+                            ET.SubElement(componente_el, "eta").text = str(componente.get("eta"))
+
                 # Save new XML to the DB
                 new_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
                 dms_instance = DmsPugliaXml()
-                dms_instance.xml.save(f'dms_puglia_movimenti_{movimento_data}.xml', ContentFile(new_xml_content),
-                                      save=True)
+                dms_instance.xml.save(f'dms_puglia_movimenti_{movimento_data}.xml', ContentFile(new_xml_content), save=True)
 
             except Exception as e:
                 print(f"Error creating new XML: {e}")
                 raise
 
     except Exception as e:
-        print(f"Unexpected error in add_or_update_movimento_in_db: {e}")
+        print(f"Unexpected error in generate_dms_puglia_xml: {e}")
         raise

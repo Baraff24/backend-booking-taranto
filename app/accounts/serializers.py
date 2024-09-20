@@ -1,6 +1,8 @@
 """
 Serializers for the accounts app.
 """
+import uuid
+
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -454,7 +456,7 @@ class SendElencoSchedineSerializer(serializers.Serializer):
 
 # Serializer for Puglia DMS
 class ComponenteSerializer(serializers.Serializer):
-    codice_cliente_sr = serializers.CharField(max_length=20)
+    codice_cliente_sr = serializers.CharField(read_only=True)
     sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
     cittadinanza = serializers.CharField(max_length=9)
     paese_residenza = serializers.CharField(max_length=9, required=False)
@@ -462,10 +464,15 @@ class ComponenteSerializer(serializers.Serializer):
     occupazione_posto_letto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
     eta = serializers.IntegerField(min_value=0)
 
+    def create(self, validated_data):
+        # Generate a unique integer
+        validated_data['codice_cliente_sr'] = uuid.uuid4().int >> 64  # Unique large integer
+        return super().create(validated_data)
+
 
 # Serializer for Puglia DMS
 class ArrivoSerializer(serializers.Serializer):
-    codice_cliente_sr = serializers.CharField(max_length=20)
+    codice_cliente_sr = serializers.CharField(read_only=True)
     sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
     cittadinanza = serializers.CharField(max_length=9)
     comune_residenza = serializers.CharField(max_length=9, required=False)
@@ -474,10 +481,12 @@ class ArrivoSerializer(serializers.Serializer):
     tipologia_alloggiato = serializers.CharField(max_length=2)
     eta = serializers.IntegerField(min_value=0)
     durata_soggiorno = serializers.IntegerField(min_value=1, required=False)
-    mezzo_trasporto_arrivo = serializers.CharField(max_length=50, required=False)
-    mezzo_trasporto_movimento = serializers.CharField(max_length=50, required=False)
-    motivazioni_viaggio = serializers.CharField(max_length=50, required=False)
     componenti = ComponenteSerializer(many=True, required=False)
+
+    def create(self, validated_data):
+        # Generate a unique integer
+        validated_data['codice_cliente_sr'] = uuid.uuid4().int >> 64  # Unique large integer
+        return super().create(validated_data)
 
 
 # Serializer for Puglia DMS
