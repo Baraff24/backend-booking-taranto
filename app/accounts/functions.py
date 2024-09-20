@@ -32,7 +32,7 @@ from allauth.account.models import EmailAddress
 from twilio.rest import Client
 
 from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
-from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAllogiatiWeb, TokenInfoAllogiatiWeb, \
+from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAlloggiatiWeb, TokenInfoAlloggiatiWeb, \
     DmsPugliaXml
 from accounts.serializers import ReservationSerializer
 from config.settings.base import (TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID,
@@ -176,7 +176,8 @@ class WhatsAppService:
 
         Args:
             to_number (str): The recipient's phone number in E.164 format.
-            message (str): The message to be sent.
+            template_sid (str): The template SID for the message.
+            template_parameters (dict): Parameters to replace in the template.
 
         Returns:
             str: The job ID of the queued task.
@@ -761,21 +762,21 @@ def get_or_create_token(structure_id):
         structure_id (int): ID of the structure.
 
     Returns:
-        TokenInfoAllogiatiWeb: The valid or newly created token.
+        TokenInfoAlloggiatiWeb: The valid or newly created token.
     """
     # Filter by structure_id and check that the token is not expired
-    token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
+    token_info = TokenInfoAlloggiatiWeb.objects.filter(expires__gt=timezone.now()).first()
 
     if token_info:
         return token_info
 
     # Generate a new token if no valid token exists
-    return generate_and_send_token_allogiati_web_request(structure_id)
+    return generate_and_send_token_alloggiati_web_request(structure_id)
 
 
 ### Core Business Logic ###
 
-def generate_and_send_token_allogiati_web_request(structure_id):
+def generate_and_send_token_alloggiati_web_request(structure_id):
     """
     Generates and sends a token request to the Alloggiati Web service.
 
@@ -783,12 +784,12 @@ def generate_and_send_token_allogiati_web_request(structure_id):
         structure_id (int): ID of the structure for which to generate a token.
 
     Returns:
-        TokenInfoAllogiatiWeb: The newly created token.
+        TokenInfoAlloggiatiWeb: The newly created token.
     """
     try:
-        user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+        user_info = UserAlloggiatiWeb.objects.get(structure_id=structure_id)
         body_content = {
-            'Utente': ('{AlloggiatiService}Utente', user_info.allogiati_web_user),
+            'Utente': ('{AlloggiatiService}Utente', user_info.alloggiati_web_user),
             'Password': ('{AlloggiatiService}Password', user_info.alloggiati_web_password),
             'WsKey': ('{AlloggiatiService}WsKey', user_info.wskey),
         }
@@ -804,13 +805,13 @@ def generate_and_send_token_allogiati_web_request(structure_id):
         )
 
         # Create and return the token record in the database
-        return TokenInfoAllogiatiWeb.objects.create(
+        return TokenInfoAlloggiatiWeb.objects.create(
             issued=datetime.fromisoformat(token_data['issued']),
             expires=datetime.fromisoformat(token_data['expires']),
             token=token_data['token'],
         )
 
-    except UserAllogiatiWeb.DoesNotExist:
+    except UserAlloggiatiWeb.DoesNotExist:
         raise ValidationError(f"User information for structure_id {structure_id} not found.")
     except Exception as e:
         raise Exception(f"An error occurred while generating the token: {str(e)}")
@@ -828,11 +829,11 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
         dict: The result of the validation process.
     """
     try:
-        user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
+        user_info = UserAlloggiatiWeb.objects.get(structure_id=structure_id)
         token_info = get_or_create_token(structure_id)
 
         body_content = {
-            'Utente': ('{AlloggiatiService}Utente', user_info.allogiati_web_user),
+            'Utente': ('{AlloggiatiService}Utente', user_info.alloggiati_web_user),
             'token': ('{AlloggiatiService}token', token_info.token),
             'ElencoSchedine': ('{AlloggiatiService}ElencoSchedine', ''),
         }

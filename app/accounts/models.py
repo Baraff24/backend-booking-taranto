@@ -206,33 +206,33 @@ class GoogleOAuthCredentials(models.Model):
         return f"Google OAuth Credentials (Client ID: {self.client_id})"
 
 
-class UserAllogiatiWeb(models.Model):
+class UserAlloggiatiWeb(models.Model):
     """
-    Model representing the user for the Allogiati Web app.
+    Model representing the user for the Alloggiati Web app.
     Fields:
     - structure: Foreign key to the User model
-    - allogiati_web_user: Allogiati web user assigned to the structure
-    - alloggiati_web_password: Password for the Allogiati Web app
-    - wskey: Web service key for the Allogiati Web app
+    - alloggiati_web_user: Alloggiati web user assigned to the structure
+    - alloggiati_web_password: Password for the Alloggiati Web app
+    - wskey: Web service key for the Alloggiati Web app
     - created_at: Timestamp of when the user was created
     """
-    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='structure_allogiati_web')
-    allogiati_web_user = models.CharField(max_length=100)
+    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='structure_alloggiati_web')
+    alloggiati_web_user = models.CharField(max_length=100)
     alloggiati_web_password = models.CharField(max_length=100)
     wskey = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"User for Allogiati Web: {self.structure}"
+        return f"User for Alloggiati Web: {self.structure}"
 
 
-class TokenInfoAllogiatiWeb(models.Model):
+class TokenInfoAlloggiatiWeb(models.Model):
     """
-    Model representing the token info for the Allogiati Web app.
+    Model representing the token info for the Alloggiati Web app.
     Fields:
     - issued: Timestamp of when the token was issued
     - expires: Timestamp of when the token expires
-    - token: Access token for the Allogiati Web app
+    - token: Access token for the Alloggiati Web app
     - created_at: Timestamp of when the token was created
     """
     issued = models.DateTimeField()
@@ -240,7 +240,7 @@ class TokenInfoAllogiatiWeb(models.Model):
     token = models.CharField(max_length=500)
 
     def __str__(self):
-        return "Token Info for Allogiati Web"
+        return "Token Info for Alloggiati Web"
 
 
 class CheckinCategoryChoices(models.Model):

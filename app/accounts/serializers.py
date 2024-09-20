@@ -8,8 +8,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
 from .models import (User, Structure, Room, Reservation, Discount,
-                     StructureImage, RoomImage, UserAllogiatiWeb,
-                     TokenInfoAllogiatiWeb, CheckinCategoryChoices, DmsPugliaXml)
+                     StructureImage, RoomImage, UserAlloggiatiWeb,
+                     TokenInfoAlloggiatiWeb, CheckinCategoryChoices, DmsPugliaXml)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -309,23 +309,23 @@ class CreateCheckoutSessionSerializer(serializers.Serializer):
         return get_object_or_404(Reservation, reservation_id__exact=self.validated_data['reservation_id'])
 
 
-class UserAllogiatiWebSerializer(serializers.ModelSerializer):
+class UserAlloggiatiWebSerializer(serializers.ModelSerializer):
     """
-    Serializer for the UserAllogiatiWeb model.
+    Serializer for the UserAlloggiatiWeb model.
     """
 
     class Meta:
-        model = UserAllogiatiWeb
+        model = UserAlloggiatiWeb
         fields = '__all__'
 
 
-class TokenInfoAllogiatiWebSerializer(serializers.ModelSerializer):
+class TokenInfoAlloggiatiWebSerializer(serializers.ModelSerializer):
     """
-    Serializer for the TokenInfoAllogiatiWeb model.
+    Serializer for the TokenInfoAlloggiatiWeb model.
     """
 
     class Meta:
-        model = TokenInfoAllogiatiWeb
+        model = TokenInfoAlloggiatiWeb
         fields = '__all__'
 
 
@@ -428,14 +428,14 @@ class SendElencoSchedineSerializer(serializers.Serializer):
         structure_id = data.get('structure_id')
 
         try:
-            # Get the user information from UserAllogiatiWeb
-            user_info = UserAllogiatiWeb.objects.get(structure_id=structure_id)
-            data['utente'] = user_info.allogiati_web_user
-        except UserAllogiatiWeb.DoesNotExist:
+            # Get the user information from UserAlloggiatiWeb
+            user_info = UserAlloggiatiWeb.objects.get(structure_id=structure_id)
+            data['utente'] = user_info.alloggiati_web_user
+        except UserAlloggiatiWeb.DoesNotExist:
             raise serializers.ValidationError("Utente associated with the structure ID not found.")
 
         # Retrieve or generate a valid token
-        token_info = TokenInfoAllogiatiWeb.objects.filter(expires__gt=timezone.now()).first()
+        token_info = TokenInfoAlloggiatiWeb.objects.filter(expires__gt=timezone.now()).first()
         if not token_info:
             # Lazy import to avoid circular imports
             from .functions import get_or_create_token

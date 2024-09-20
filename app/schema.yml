@@ -843,6 +843,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/SendElencoSchedine'
           description: ''
+  /api/v1/accounts/send-whatsapp-to-all-users/:
+    post:
+      operationId: accounts_send_whatsapp_to_all_users_create
+      description: Handles POST requests to send a WhatsApp message to all users.
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendWhatsAppToAllUsers'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendWhatsAppToAllUsers'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendWhatsAppToAllUsers'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendWhatsAppToAllUsers'
+          description: ''
   /api/v1/accounts/stripe-webhook/:
     post:
       operationId: accounts_stripe_webhook_create
@@ -2408,6 +2435,14 @@ components:
       - structure_id
       - token
       - utente
+    SendWhatsAppToAllUsers:
+      type: object
+      properties:
+        message:
+          type: string
+          maxLength: 4096
+      required:
+      - message
     SessoE07Enum:
       enum:
       - M

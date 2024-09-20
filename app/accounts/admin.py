@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (User, Structure, Room, RoomImage,
                      Reservation, Discount, GoogleOAuthCredentials,
-                     StructureImage, UserAllogiatiWeb, TokenInfoAllogiatiWeb,
+                     StructureImage, UserAlloggiatiWeb, TokenInfoAlloggiatiWeb,
                      CheckinCategoryChoices, DmsPugliaXml)
 
 
@@ -40,6 +40,6 @@ admin.site.register(RoomImage)
 admin.site.register(Reservation)
 admin.site.register(Discount)
 admin.site.register(CheckinCategoryChoices)
-admin.site.register(UserAllogiatiWeb)
-admin.site.register(TokenInfoAllogiatiWeb)
+admin.site.register(UserAlloggiatiWeb)
+admin.site.register(TokenInfoAlloggiatiWeb)
 admin.site.register(DmsPugliaXml)
