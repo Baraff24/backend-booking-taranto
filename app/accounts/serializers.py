@@ -2,6 +2,7 @@
 Serializers for the accounts app.
 """
 import uuid
+from datetime import timedelta
 
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
@@ -9,6 +10,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
+from .functions import get_combined_busy_dates, is_room_available
 from .models import (User, Structure, Room, Reservation, Discount,
                      StructureImage, RoomImage, UserAlloggiatiWeb,
                      TokenInfoAlloggiatiWeb, CheckinCategoryChoices, DmsPugliaXml)
@@ -459,8 +461,8 @@ class ComponenteSerializer(serializers.Serializer):
     codice_cliente_sr = serializers.CharField(read_only=True)
     sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
     cittadinanza = serializers.CharField(max_length=9)
-    paese_residenza = serializers.CharField(max_length=9, required=False)
-    comune_residenza = serializers.CharField(max_length=9, required=False)
+    paese_residenza = serializers.CharField(max_length=9, required=False, allow_blank=True)
+    comune_residenza = serializers.CharField(max_length=9, required=False, allow_blank=True)
     occupazione_posto_letto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
     eta = serializers.IntegerField(min_value=0)
 
@@ -475,7 +477,7 @@ class ArrivoSerializer(serializers.Serializer):
     codice_cliente_sr = serializers.CharField(read_only=True)
     sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
     cittadinanza = serializers.CharField(max_length=9)
-    comune_residenza = serializers.CharField(max_length=9, required=False)
+    comune_residenza = serializers.CharField(max_length=9, required=False, allow_blank=True)
     occupazione_postoletto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
     dayuse = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
     tipologia_alloggiato = serializers.CharField(max_length=2)
@@ -491,13 +493,44 @@ class ArrivoSerializer(serializers.Serializer):
 
 # Serializer for Puglia DMS
 class MovimentoSerializer(serializers.Serializer):
+    structure_id = serializers.IntegerField()
     type = serializers.ChoiceField(choices=[('MP', 'Movement')])
     data = serializers.DateField(format='%Y-%m-%d')
     arrivi = ArrivoSerializer(many=True)
-    partenze = serializers.ListField(
-        child=serializers.CharField(max_length=20), required=False
-    )
     dati_struttura = serializers.DictField(child=serializers.IntegerField(), required=False)
+
+    def create(self, validated_data):
+        """
+        Method to create the Movimento object.
+        Adds structure details like available rooms, occupied rooms, and total beds.
+        """
+        structure = Structure.objects.get(id=validated_data['structure_id'])
+        rooms = Room.objects.filter(structure=structure)
+
+        check_in = validated_data['data']
+        check_out = check_in + timedelta(days=1)
+
+        # Calculate room availability using Google Calendar and reservation data
+        available_rooms = 0
+        occupied_rooms = 0
+        total_beds = 0
+
+        for room in rooms:
+            busy_dates = get_combined_busy_dates(room, check_in, check_out)
+            if is_room_available(busy_dates, check_in, check_out):
+                available_rooms += 1
+            else:
+                occupied_rooms += 1
+            total_beds += room.max_people
+
+        # Adding structure data to validated_data['dati_struttura']
+        validated_data['dati_struttura'] = {
+            'available_rooms': available_rooms,
+            'occupied_rooms': occupied_rooms,
+            'total_beds': total_beds
+        }
+
+        return super().create(validated_data)
 
 
 class CheckinCategoryChoicesSerializer(serializers.ModelSerializer):
