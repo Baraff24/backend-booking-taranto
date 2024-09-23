@@ -1012,7 +1012,7 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
     Save the XML content to the database inside a transaction.
     """
     try:
-        structure = Structure.objects.get(id=dms_instance.structure_id)
+        structure = Structure.objects.get(id=dms_instance.id)
 
         filename = f'{structure.name}_{movimento_data}.xml'
         dms_instance.xml.save(filename, ContentFile(xml_content), save=True)
