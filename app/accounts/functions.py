@@ -789,7 +789,7 @@ def generate_and_send_token_alloggiati_web_request(structure_id):
         TokenInfoAlloggiatiWeb: The newly created token.
     """
     try:
-        user_info = UserAlloggiatiWeb.objects.get(structure_id=structure_id)
+        user_info = UserAlloggiatiWeb.objects.get(structure__id=structure_id)
         body_content = {
             'Utente': ('{AlloggiatiService}Utente', user_info.alloggiati_web_user),
             'Password': ('{AlloggiatiService}Password', user_info.alloggiati_web_password),
@@ -831,7 +831,7 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
         dict: The result of the validation process.
     """
     try:
-        user_info = UserAlloggiatiWeb.objects.get(structure_id=structure_id)
+        user_info = UserAlloggiatiWeb.objects.get(structure__id=structure_id)
         token_info = get_or_create_token(structure_id)
 
         body_content = {
@@ -882,7 +882,7 @@ def generate_dms_puglia_xml(data, vendor):
 
         # Check for existing XML file for the same date and structure
         existing_dms_instance = DmsPugliaXml.objects.filter(
-            structure_id=structure_id,
+            structure__id=structure_id,
             xml__contains=f'data="{movimento_data}"'
         ).first()
 
@@ -984,7 +984,7 @@ def create_new_xml(data, movimento_data, vendor):
 
         # Save new XML content to the database
         new_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
-        dms_instance = DmsPugliaXml(structure_id=data['structure_id'])
+        dms_instance = DmsPugliaXml(structure__id=data['structure_id'])
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
     except Exception as e:
