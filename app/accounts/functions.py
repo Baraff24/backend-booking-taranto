@@ -870,9 +870,13 @@ def generate_dms_puglia_xml(data, vendor):
     """
     try:
         movimento_data = data['data'].strftime('%Y-%m-%d')
+        structure_id = data['structure_id']
 
         # Query the database to check if there's already an XML for the given date
-        existing_dms_instance = DmsPugliaXml.objects.filter(xml__contains=f'data="{movimento_data}"').first()
+        existing_dms_instance = DmsPugliaXml.objects.filter(
+            structure_id=structure_id,
+            xml__contains=f'data="{movimento_data}"'
+        ).first()
 
         if existing_dms_instance:
             try:

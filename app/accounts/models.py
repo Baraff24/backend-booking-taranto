@@ -266,6 +266,7 @@ class DmsPugliaXml(models.Model):
     - xml: XML file for the DMS Puglia
     - created_at: Timestamp of when the XML was created
     """
+    structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='dms_puglia_xml')
     xml = models.FileField(upload_to='dms_puglia_xml/')
     created_at = models.DateTimeField(auto_now_add=True)
 
