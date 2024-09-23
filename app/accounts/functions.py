@@ -1006,12 +1006,13 @@ def find_or_create_movimento(root, data, movimento_data):
     })
 
 
+@transaction.atomic
 def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
     Save the XML content to the database inside a transaction.
     """
     try:
-        structure = Structure.objects.get(id=dms_instance.id)
+        structure = Structure.objects.get(id=dms_instance.structure.id)
 
         filename = f'{structure.name}_{movimento_data}.xml'
         dms_instance.xml.save(filename, ContentFile(xml_content), save=True)
