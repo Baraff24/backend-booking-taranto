@@ -10,7 +10,6 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .constants import CANCELED
-from .functions import get_combined_busy_dates, is_room_available
 from .models import (User, Structure, Room, Reservation, Discount,
                      StructureImage, RoomImage, UserAlloggiatiWeb,
                      TokenInfoAlloggiatiWeb, CheckinCategoryChoices, DmsPugliaXml)
@@ -504,6 +503,9 @@ class MovimentoSerializer(serializers.Serializer):
         Method to create the Movimento object.
         Adds structure details like available rooms, occupied rooms, and total beds.
         """
+
+        from .functions import get_combined_busy_dates, is_room_available
+
         structure = Structure.objects.get(id=validated_data['structure_id'])
         rooms = Room.objects.filter(structure=structure)
 

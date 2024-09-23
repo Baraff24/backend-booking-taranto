@@ -33,8 +33,9 @@ from allauth.account.models import EmailAddress
 from twilio.rest import Client
 
 from accounts.constants import COMPLETE, ADMIN, PAID, UNPAID, CANCELED
-from accounts.models import Reservation, Discount, GoogleOAuthCredentials, UserAlloggiatiWeb, TokenInfoAlloggiatiWeb, \
-    DmsPugliaXml, Structure
+from accounts.models import (Reservation, Discount, GoogleOAuthCredentials,
+                             UserAlloggiatiWeb, TokenInfoAlloggiatiWeb,
+                             DmsPugliaXml, Structure)
 from accounts.serializers import ReservationSerializer
 from config.settings.base import (TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID,
                                   ALLOGGIATI_WEB_URL, TWILIO_NUMBER, REDIS_BACKEND, OWNER_PHONE_NUMBER)
