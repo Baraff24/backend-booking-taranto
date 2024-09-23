@@ -882,7 +882,7 @@ def generate_dms_puglia_xml(data, vendor):
 
         # Check for existing XML file for the same date and structure
         existing_dms_instance = DmsPugliaXml.objects.filter(
-            id=structure_id,
+            structure_id=structure_id,
             xml__contains=f'data="{movimento_data}"'
         ).first()
 
@@ -984,7 +984,7 @@ def create_new_xml(data, movimento_data, vendor):
 
         # Save new XML content to the database
         new_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
-        dms_instance = DmsPugliaXml(id=data['structure_id'])
+        dms_instance = DmsPugliaXml(structure_id=data['structure_id'])
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
     except Exception as e:
