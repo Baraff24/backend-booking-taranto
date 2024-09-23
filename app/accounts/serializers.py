@@ -432,7 +432,7 @@ class SendElencoSchedineSerializer(serializers.Serializer):
 
         try:
             # Get the user information from UserAlloggiatiWeb
-            user_info = UserAlloggiatiWeb.objects.get(structure_id=structure_id)
+            user_info = UserAlloggiatiWeb.objects.get(structure__id=structure_id)
             data['utente'] = user_info.alloggiati_web_user
         except UserAlloggiatiWeb.DoesNotExist:
             raise serializers.ValidationError("Utente associated with the structure ID not found.")

@@ -1006,7 +1006,6 @@ def find_or_create_movimento(root, data, movimento_data):
     })
 
 
-@transaction.atomic
 def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
     Save the XML content to the database inside a transaction.
