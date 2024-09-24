@@ -997,18 +997,17 @@ def append_structure_data(movimento_el, dati_struttura):
 
 
 def append_arrivi_to_movimento(movimento_el, arrivi):
-    """
-    Append 'arrivi' to the 'movimento' element in the XML.
-    """
     arrivi_el = ET.SubElement(movimento_el, "arrivi")
     for arrivo in arrivi:
         arrivo_el = ET.SubElement(arrivi_el, "arrivo")
 
-        # Add default values if fields are missing
         ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr", "")
         ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso", "")
         ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza", "")
-        ET.SubElement(arrivo_el, "paese_residenza").text = arrivo.get("paese_residenza", "")
+
+        # Add explicit handling for empty paese_residenza
+        ET.SubElement(arrivo_el, "paese_residenza").text = arrivo.get("paese_residenza", " ") or " "
+
         ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
         ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto", "")
         ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse", "")
