@@ -12,6 +12,7 @@ import requests
 from decouple import config
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db import transaction
@@ -1100,27 +1101,25 @@ def find_or_create_movimento(root, data, movimento_data):
 @transaction.atomic
 def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
-    Save the XML content to the database inside a transaction.
+    Save the XML content to the database inside a transaction using default_storage.
     """
     try:
-        structure = Structure.objects.get(id=dms_instance.structure.id)
-        filename = f'{structure.name}_{movimento_data}.xml'
+        structure = dms_instance.structure
+        relative_filename = f'{structure.name}_{movimento_data}.xml'
 
-        print(f"Saving file: {filename}")
+        # Saving XML content using default_storage
         if xml_content:
-            # Convert XML content to bytes and save it
-            content_file = ContentFile(xml_content.encode('utf-8'))
-            dms_instance.xml.save(filename, content_file, save=True)
-            print(f"File saved successfully: {filename}")
+            file_path = default_storage.save(relative_filename, ContentFile(xml_content.encode('utf-8')))
+            print(f"File saved successfully at: {file_path}")
+            dms_instance.xml.name = file_path  # Assign the saved file's path to the model's file field
+            dms_instance.save()
         else:
             raise ValueError("XML content is empty")
 
+        # Additional file information (if needed)
         print(f"File path after save: {dms_instance.xml.path}")
         print(f"File name after save: {dms_instance.xml.name}")
         print(f"File size: {dms_instance.xml.size}")
-        # Ensure file has been saved and exists
-        if not dms_instance.xml:
-            raise ValueError("Failed to save XML file.")
 
     except Exception as e:
         print(f"Error saving XML to database: {e}")
