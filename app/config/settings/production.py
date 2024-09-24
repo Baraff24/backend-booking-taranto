@@ -10,12 +10,12 @@ CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://redis:6379/0')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 
 CELERY_BEAT_SCHEDULE = {
-    # 'example_task': {
-    #     'task': 'app.tasks.example_task',
-    #     # Activate example_task every month on the 1st day at 2:00 AM
-    #     'schedule': crontab(minute='0', hour='2', day_of_month='1'),
-    # },
+    'send_self_checkin_reminders': {
+        'task': 'accounts.tasks.send_self_checkin_reminders',
+        'schedule': crontab(hour="8", minute="0"),  # Every day at 8 AM
+    },
 }
+CELERY_TIMEZONE = 'Europe/Rome'
 
 # AWS S3
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')

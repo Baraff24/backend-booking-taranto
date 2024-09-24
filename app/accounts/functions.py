@@ -395,6 +395,91 @@ def send_payment_confirmation_email(reservation):
         print(f"Failed to send payment confirmation email: {str(e)}")
 
 
+def send_self_checkin_mail(reservation):
+    """
+    Send a payment confirmation email to the user
+    """
+    try:
+        serializer = ReservationSerializer(reservation)
+        reservation_data = serializer.data
+
+        context = {
+            'reservation': reservation_data,
+            'current_year': timezone.now().year,
+        }
+
+        subject = 'Ricorda di fare il check-in!'
+        html_message = get_template('account/email/email_self_checkin.html').render(context)
+        plain_message = strip_tags(html_message)
+        from_email = EMAIL
+        to_email = reservation.email_on_reservation
+
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+    except Exception as e:
+        print(f"Failed to send payment confirmation email: {str(e)}")
+
+
+def send_self_checkin_whatsapp_message(reservation):
+    try:
+        whatsapp_service = WhatsAppService()
+
+        # Prepare template parameters
+        guest_template_parameters = [
+            {"type": "text", "text": reservation.user.first_name},  # {{1}} for guest's first name
+            {"type": "text", "text": str(reservation.id)},  # {{2}} for reservation ID
+            {"type": "text", "text": reservation.first_name_on_reservation},  # {{3}} guest first name
+            {"type": "text", "text": reservation.last_name_on_reservation},  # {{4}} guest last name
+            {"type": "text", "text": reservation.email_on_reservation},  # {{5}} email
+            {"type": "text", "text": reservation.phone_on_reservation},  # {{6}} phone
+            {"type": "text", "text": reservation.room.structure.name},  # {{7}} structure name
+            {"type": "text", "text": reservation.room.name},  # {{8}} room name
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{9}} check-in date
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{10}} check-out date
+        ]
+
+        owner_template_parameters = [
+            {"type": "text", "text": reservation.first_name_on_reservation},  # {{1}} guest first name
+            {"type": "text", "text": reservation.last_name_on_reservation},  # {{2}} guest last name
+            {"type": "text", "text": reservation.email_on_reservation},  # {{3}} email
+            {"type": "text", "text": reservation.phone_on_reservation},  # {{4}} phone
+            {"type": "text", "text": reservation.room.structure.name},  # {{5}} structure name
+            {"type": "text", "text": reservation.room.name},  # {{6}} room name
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{7}} check-in date
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{8}} check-out date
+        ]
+
+        # Define the template SID for confirmation (get this from Twilio Console)
+        guest_template_sid = "send_self_checkin_guest"
+
+        # Define the template SID for the owner message
+        owner_template_sid = "send_self_checkin_owner"
+
+        # Queue the message for the user
+        job_id = whatsapp_service.queue_message(
+            reservation.phone_on_reservation,
+            guest_template_sid,
+            guest_template_parameters
+        )
+
+        # Queue the message for the owner
+        owner_job_id = whatsapp_service.queue_message(
+            OWNER_PHONE_NUMBER,
+            owner_template_sid,
+            owner_template_parameters
+        )
+
+        if job_id and owner_job_id:
+            print(f"WhatsApp message queued successfully with job ID: {job_id}")
+            return job_id, owner_job_id
+        else:
+            print("Failed to queue the WhatsApp message.")
+            return None
+
+    except Exception as e:
+        print(f"Failed to send WhatsApp confirmation message: {str(e)}")
+        return None
+
+
 def send_cancel_reservation_email(reservation):
     """
     Send a refund confirmation email to the user
@@ -444,7 +529,7 @@ def cancel_reservation_and_remove_event(reservation):
 
             # Send notifications
             send_cancel_reservation_email(reservation)
-            send_cancel_reservation_whatsapp_message(reservation)
+            # send_cancel_reservation_whatsapp_message(reservation)
         else:
             raise Exception("No event_id found for this reservation.")
     except GoogleOAuthCredentials.DoesNotExist:
@@ -849,7 +934,7 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
             '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement).decode('utf-8')
         )
 
-        xml_request = build_soap_envelope('{AlloggiatiService}Test', body_content)
+        xml_request = build_soap_envelope('{AlloggiatiService}Send', body_content)
         response_content = send_soap_request(xml_request)
 
         return parse_soap_response(

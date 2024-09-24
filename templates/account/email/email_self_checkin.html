@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conferma Pagamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            background-color: #fff;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .email-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .email-header img {
+            max-width: 150px;
+        }
+        .email-body {
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333333;
+        }
+        p {
+            color: #666666;
+            line-height: 1.5;
+        }
+        ul {
+            padding: 0;
+            list-style-type: none;
+        }
+        ul li {
+            background-color: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            color: #333333;
+        }
+        .email-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <div class="email-header">
+        <img src="https://gmapartments-bucket1.s3.eu-south-1.amazonaws.com/logos/gm-logo-cover.png" alt="Logo Azienda">
+    </div>
+    <div class="email-body">
+        {% autoescape off %}
+        <h1>Ricorda di effettuare il checkin!</h1>
+        <p>Gentile {{ reservation.user.first_name }},</p>
+        <p>Puoi effettuare il self check in, cliccando nel bottone qui sotto:</p>
+        <p style="text-align: center;">
+            <a href="https://gm-apartments.it/checkin/{{ reservation.room.structure.id }}" class="reset-button">
+                Fai il check-in
+            </a>
+        </p>
+        <p>Grazie per aver scelto il nostro servizio.</p>
+        <p>Cordiali saluti,</p>
+        <p>Il team dell'hotel</p>
+        {% endautoescape %}
+    </div>
+    <div class="email-footer">
+        <p>Se hai domande, non esitare a contattarci.</p>
+        <p>Hotel XYZ, Via Roma 123, 00100 Roma, Italia</p>
+        <p>Telefono: +39 06 1234 5678</p>
+        <p>Email: info@hotelxyz.it</p>
+        <p>&copy; {{ current_year }} NomeSito. Tutti i diritti riservati.</p>
+    </div>
+</div>
+</body>
+</html>
