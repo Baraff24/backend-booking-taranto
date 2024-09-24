@@ -1105,9 +1105,12 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
     try:
         structure = Structure.objects.get(id=dms_instance.structure.id)
         filename = f'{structure.name}_{movimento_data}.xml'
+
         print(f"Saving file: {filename}")
         if xml_content:
-            dms_instance.xml.save(filename, ContentFile(xml_content), save=True)
+            content_file = ContentFile(xml_content.encode('utf-8'))  # Ensure content is encoded to bytes
+            dms_instance.xml.save(filename, content_file, save=True)
+            print(f"File saved successfully: {filename}")
         else:
             raise ValueError("XML content is empty")
     except Exception as e:
