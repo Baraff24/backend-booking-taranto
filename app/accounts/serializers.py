@@ -466,8 +466,8 @@ class ComponenteSerializer(serializers.Serializer):
     eta = serializers.IntegerField(min_value=0)
 
     def create(self, validated_data):
-        # Generate a unique integer
-        validated_data['codice_cliente_sr'] = uuid.uuid4().int >> 64  # Unique large integer
+        # Ensure a unique integer is generated for 'codice_cliente_sr'
+        validated_data['codice_cliente_sr'] = validated_data.get('codice_cliente_sr') or str(uuid.uuid4().int >> 64)
         return super().create(validated_data)
 
 
@@ -485,8 +485,8 @@ class ArrivoSerializer(serializers.Serializer):
     componenti = ComponenteSerializer(many=True, required=False)
 
     def create(self, validated_data):
-        # Generate a unique integer
-        validated_data['codice_cliente_sr'] = uuid.uuid4().int >> 64  # Unique large integer
+        # Ensure a unique integer is generated for 'codice_cliente_sr'
+        validated_data['codice_cliente_sr'] = validated_data.get('codice_cliente_sr') or str(uuid.uuid4().int >> 64)
         return super().create(validated_data)
 
 

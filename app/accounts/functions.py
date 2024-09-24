@@ -1098,9 +1098,6 @@ def find_or_create_movimento(root, data, movimento_data):
     })
 
 
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-
 @transaction.atomic
 def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
@@ -1128,8 +1125,6 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
         print(f"Error saving XML to database: {e}")
         raise
 
-
 #####################################################################################
 # DMS Puglia XML Generation END #
 #####################################################################################
-
