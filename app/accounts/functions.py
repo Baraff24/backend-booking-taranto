@@ -1098,32 +1098,36 @@ def find_or_create_movimento(root, data, movimento_data):
     })
 
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+
 @transaction.atomic
 def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
     Save the XML content to the database inside a transaction using default_storage.
     """
     try:
-        structure = dms_instance.structure
-        relative_filename = f'{structure.name}_{movimento_data}.xml'
+        structure = Structure.objects.get(id=dms_instance.structure.id)
+        relative_filename = f'dms_puglia_xml/{structure.name}_{movimento_data}.xml'  # Ensure this is in a subdirectory
 
-        # Saving XML content using default_storage
+        print(f"Saving file: {relative_filename}")
         if xml_content:
-            file_path = default_storage.save(relative_filename, ContentFile(xml_content.encode('utf-8')))
-            print(f"File saved successfully at: {file_path}")
-            dms_instance.xml.name = file_path  # Assign the saved file's path to the model's file field
-            dms_instance.save()
+            # Use default_storage to handle the file save operation
+            content_file = ContentFile(xml_content.encode('utf-8'))
+
+            # Save the file using default_storage
+            saved_path = default_storage.save(relative_filename, content_file)
+            dms_instance.xml.name = saved_path  # Save the relative path in the model
+            dms_instance.save()  # Ensure the instance is saved with the new file path
+
+            print(f"File saved successfully at: {saved_path}")
         else:
             raise ValueError("XML content is empty")
-
-        # Additional file information (if needed)
-        print(f"File path after save: {dms_instance.xml.path}")
-        print(f"File name after save: {dms_instance.xml.name}")
-        print(f"File size: {dms_instance.xml.size}")
 
     except Exception as e:
         print(f"Error saving XML to database: {e}")
         raise
+
 
 #####################################################################################
 # DMS Puglia XML Generation END #
