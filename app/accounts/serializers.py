@@ -473,7 +473,7 @@ class ComponenteSerializer(serializers.Serializer):
 
 # Serializer for Puglia DMS
 class ArrivoSerializer(serializers.Serializer):
-    codice_cliente_sr = serializers.CharField(read_only=True)
+    codice_cliente_sr = serializers.CharField(allow_blank=True)
     sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
     cittadinanza = serializers.CharField(max_length=9)
     comune_residenza = serializers.CharField(max_length=9, required=False, allow_blank=True)
