@@ -1108,11 +1108,20 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
 
         print(f"Saving file: {filename}")
         if xml_content:
-            content_file = ContentFile(xml_content.encode('utf-8'))  # Ensure content is encoded to bytes
+            # Convert XML content to bytes and save it
+            content_file = ContentFile(xml_content.encode('utf-8'))
             dms_instance.xml.save(filename, content_file, save=True)
             print(f"File saved successfully: {filename}")
         else:
             raise ValueError("XML content is empty")
+
+        print(f"File path after save: {dms_instance.xml.path}")
+        print(f"File name after save: {dms_instance.xml.name}")
+        print(f"File size: {dms_instance.xml.size}")
+        # Ensure file has been saved and exists
+        if not dms_instance.xml:
+            raise ValueError("Failed to save XML file.")
+
     except Exception as e:
         print(f"Error saving XML to database: {e}")
         raise
