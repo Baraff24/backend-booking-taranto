@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from django.core.files.base import ContentFile
 from django.http import FileResponse
 
-from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID
+from .constants import PENDING_COMPLETE_DATA, COMPLETE, ADMIN, CANCELED, CUSTOMER, PAID, UNPAID
 from .filters import ReservationFilter
 from .functions import (is_active, is_admin, calculate_total_cost, calculate_discount,
                         get_google_calendar_service, get_busy_dates_from_reservations,
@@ -868,8 +868,11 @@ class AvailableRoomsForDatesAPI(APIView):
             max_people__gte=max_people
         ).exclude(
             Q(reservations__check_in__lt=check_out, reservations__check_out__gt=check_in) &
-            (Q(reservations__status='PAID') |
-             Q(reservations__status='UNPAID', reservations__created_at__gte=current_time - timedelta(minutes=10)))
+            (
+                    Q(reservations__status=PAID) |
+                    Q(reservations__status=UNPAID, reservations__created_at__gte=current_time - timedelta(minutes=10)) |
+                    Q(reservations__status=CANCELED)
+            )
         ).select_related('structure').distinct()
 
         final_available_rooms = []
