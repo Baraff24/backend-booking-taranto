@@ -457,7 +457,7 @@ class SendElencoSchedineSerializer(serializers.Serializer):
 
 # Serializer for Puglia DMS
 class ComponenteSerializer(serializers.Serializer):
-    codice_cliente_sr = serializers.CharField(read_only=True)
+    codice_cliente_sr = serializers.CharField(allow_blank=True)
     sesso = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female')])
     cittadinanza = serializers.CharField(max_length=9)
     paese_residenza = serializers.CharField(max_length=9, required=False, allow_blank=True)

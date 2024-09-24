@@ -1016,6 +1016,7 @@ def append_arrivi_to_movimento(movimento_el, arrivi):
         ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta", 0))
         ET.SubElement(arrivo_el, "duratasoggiorno").text = str(arrivo.get("durata_soggiorno", 0))
 
+
 def update_existing_xml(existing_dms_instance, data, movimento_data):
     """
     Update an existing XML file in the DB for the given structure and date.
