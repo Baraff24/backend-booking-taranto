@@ -496,7 +496,7 @@ class MovimentoSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=[('MP', 'Movement')])
     data = serializers.DateField(format='%Y-%m-%d')
     arrivi = ArrivoSerializer(many=True)
-    dati_struttura = serializers.DictField(child=serializers.IntegerField(), required=False)
+    dati_struttura = serializers.DictField(child=serializers.IntegerField(), required=False, allow_blank=True)
 
     def create(self, validated_data):
         """
