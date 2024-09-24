@@ -1000,21 +1000,21 @@ def append_arrivi_to_movimento(movimento_el, arrivi):
     """
     Append 'arrivi' to the 'movimento' element in the XML.
     """
-    print("Appending arrivi")
     arrivi_el = ET.SubElement(movimento_el, "arrivi")
     for arrivo in arrivi:
         arrivo_el = ET.SubElement(arrivi_el, "arrivo")
-        ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr")
-        ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso")
-        ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza")
+
+        # Add default values if fields are missing
+        ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr", "")
+        ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso", "")
+        ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza", "")
         ET.SubElement(arrivo_el, "paeseresidenza").text = arrivo.get("paeseresidenza", "")
         ET.SubElement(arrivo_el, "comuneresidenza").text = arrivo.get("comune_residenza", "")
-        ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto")
-        ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse")
-        ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato")
-        ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta"))
+        ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto", "")
+        ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse", "")
+        ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato", "")
+        ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta", 0))
         ET.SubElement(arrivo_el, "duratasoggiorno").text = str(arrivo.get("durata_soggiorno", 0))
-
 
 def update_existing_xml(existing_dms_instance, data, movimento_data):
     """
