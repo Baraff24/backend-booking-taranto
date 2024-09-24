@@ -1068,7 +1068,10 @@ def create_new_xml(data, movimento_data, vendor):
         append_arrivi_to_movimento(movimento_el, data['arrivi'])
 
         # Save new XML content to the database
-        new_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+        new_xml_content = ET.tostring(root, encoding="utf-8", method="xml")
+        if new_xml_content is None:
+            raise ValueError("Failed to generate XML content")
+        new_xml_content = new_xml_content.decode("utf-8")
         dms_instance = DmsPugliaXml(structure_id=data['structure_id'])
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
@@ -1100,7 +1103,10 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
         structure = Structure.objects.get(id=dms_instance.structure.id)
 
         filename = f'{structure.name}_{movimento_data}.xml'
-        dms_instance.xml.save(filename, ContentFile(xml_content), save=True)
+        if xml_content:
+            dms_instance.xml.save(filename, ContentFile(xml_content), save=True)
+        else:
+            raise ValueError("XML content is empty")
     except Exception as e:
         print(f"Error saving XML to database: {e}")
         raise
