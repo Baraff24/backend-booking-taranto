@@ -65,23 +65,23 @@
         {% autoescape off %}
         <h1>Ricorda di effettuare il checkin!</h1>
         <p>Gentile {{ reservation.user.first_name }},</p>
-        <p>Puoi effettuare il self check in, cliccando nel bottone qui sotto:</p>
+        <p>Il Grande Giorno è Arrivato! </br>Ti ricordiamo che, appena arriverai in struttura dovrai effettuare il Self Check-in. Dovrai semplicemnte inserire i tuoi dati e, se non sei da solo, quelli di chi ti accompagna: Sarà un'operazione molto semplice e rapida! </br> Puoi effettuare il Self Check-in, cliccando nel bottone qui sotto:</p>
         <p style="text-align: center;">
             <a href="https://gm-apartments.it/checkin/{{ reservation.room.structure.id }}" class="reset-button">
-                Fai il check-in
+                Fai il Check-in
             </a>
         </p>
         <p>Grazie per aver scelto il nostro servizio.</p>
         <p>Cordiali saluti,</p>
-        <p>Il team dell'hotel</p>
+        <p>Il team di GMapartments</p>
         {% endautoescape %}
     </div>
     <div class="email-footer">
         <p>Se hai domande, non esitare a contattarci.</p>
-        <p>Hotel XYZ, Via Roma 123, 00100 Roma, Italia</p>
-        <p>Telefono: +39 06 1234 5678</p>
-        <p>Email: info@hotelxyz.it</p>
-        <p>&copy; {{ current_year }} NomeSito. Tutti i diritti riservati.</p>
+        <p>GMapartments, GA.MA. AUTOMATIC SHOP SRLS, Via Roma 22, 74026 Pulsano (TA), Italia</p>
+        <p>Telefono: +39 379 1358530</p>
+        <p>Email: gmapartments@gmail.com</p>
+        <p>&copy; {{ current_year }} gm-apartments.it. Tutti i diritti riservati.</p>
     </div>
 </div>
 </body>
