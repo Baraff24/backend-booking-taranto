@@ -7,6 +7,7 @@ from django.utils import timezone
 from accounts.models import Reservation
 from accounts.functions import send_self_checkin_mail, send_self_checkin_whatsapp_message
 
+
 @shared_task
 def send_self_checkin_reminders():
     """

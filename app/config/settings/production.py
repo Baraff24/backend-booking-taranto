@@ -11,7 +11,7 @@ CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6
 
 CELERY_BEAT_SCHEDULE = {
     'send_self_checkin_reminders': {
-        'task': 'accounts.tasks.send_self_checkin_reminders',
+        'task': 'celery_tasks.tasks.send_self_checkin_reminders',
         'schedule': crontab(hour="8", minute="0"),  # Every day at 8 AM
     },
 }
