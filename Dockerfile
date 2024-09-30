@@ -16,16 +16,16 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm -rf /tmp/requirements.txt
 
-# Create a non-root user for celery
-RUN adduser --disabled-password --gecos '' celeryuser \
-    && chown -R celeryuser /app \
-    && chown -R celeryuser /celery_tasks
-
 WORKDIR /app
 COPY ./scripts /scripts/
 COPY ./app .
 COPY ./templates /templates/
 COPY ./initial_data /app/initial_data/
+
+
+# Create a non-root user for celery
+RUN adduser --disabled-password --gecos '' celeryuser \
+    && chown -R celeryuser /app
 
 ENTRYPOINT ["/scripts/docker/wait-for-it.sh", "database:5432" , "-s", "--"]
 CMD ["/scripts/docker/starter.sh"]
