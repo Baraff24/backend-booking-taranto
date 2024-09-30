@@ -23,6 +23,7 @@ services:
       - .:/code
     env_file:
       - ./.env
+    user: "celeryuser"
     depends_on:
       - redis
       - app

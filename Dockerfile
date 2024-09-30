@@ -17,7 +17,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm -rf /tmp/requirements.txt
 
 # Create a non-root user
-RUN adduser --disabled-password --gecos '' celeryuser
+RUN adduser --disabled-password --gecos '' celeryuser \
+    && chmod r+x celeryuser
 
 WORKDIR /app
 COPY ./scripts /scripts/

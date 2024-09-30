@@ -20,7 +20,7 @@ services:
   celery:
     build: .
     restart: always
-    command: celery -A config worker -l info --uid celeryuser --gid celeryuser
+    command: celery -A config worker -l info
     volumes:
       - .:/code
     env_file:
