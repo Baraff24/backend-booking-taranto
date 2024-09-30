@@ -20,11 +20,12 @@ services:
   celery:
     build: .
     restart: always
-    command: celery -A config worker -l info
+    command: celery -A config worker -l info --uid celeryuser --gid celeryuser
     volumes:
       - .:/code
     env_file:
       - ./.env
+    user: "celeryuser"
     depends_on:
       - redis
       - app
