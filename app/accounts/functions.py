@@ -1109,15 +1109,22 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
 
         print(f"Saving file: {relative_filename}")
         if xml_content:
-            # Use default_storage to handle the file save operation
-            content_file = ContentFile(xml_content.encode('utf-8'))
 
-            # Save the file using default_storage
-            saved_path = default_storage.save(relative_filename, content_file)
-            dms_instance.xml.name = saved_path  # Save the relative path in the model
-            dms_instance.save()  # Ensure the instance is saved with the new file path
+            try:
 
-            print(f"File saved successfully at: {saved_path}")
+                # Use default_storage to handle the file save operation
+                content_file = ContentFile(xml_content.encode('utf-8'))
+
+                # Save the file using default_storage
+                saved_path = default_storage.save(relative_filename, content_file)
+                dms_instance.xml.name = saved_path  # Save the relative path in the model
+                dms_instance.save()  # Ensure the instance is saved with the new file path
+
+                print(f"File saved successfully at: {saved_path}")
+
+            except Exception as e:
+                print(f"Error saving file to the DB: {e}")
+                raise
         else:
             raise ValueError("XML content is empty")
 

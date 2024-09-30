@@ -465,10 +465,11 @@ class ComponenteSerializer(serializers.Serializer):
     occupazione_posto_letto = serializers.ChoiceField(choices=[('si', 'Yes'), ('no', 'No')])
     eta = serializers.IntegerField(min_value=0)
 
-    def create(self, validated_data):
-        # Ensure a unique integer is generated for 'codice_cliente_sr'
-        validated_data['codice_cliente_sr'] = validated_data.get('codice_cliente_sr') or str(uuid.uuid4().int >> 64)
-        return super().create(validated_data)
+    def validate(self, data):
+        # Generate 'codice_cliente_sr' if it's missing or blank
+        if not data.get('codice_cliente_sr'):
+            data['codice_cliente_sr'] = str(uuid.uuid4().int >> 64)
+        return data
 
 
 # Serializer for Puglia DMS
@@ -484,10 +485,11 @@ class ArrivoSerializer(serializers.Serializer):
     durata_soggiorno = serializers.IntegerField(min_value=1, required=False)
     componenti = ComponenteSerializer(many=True, required=False)
 
-    def create(self, validated_data):
-        # Ensure a unique integer is generated for 'codice_cliente_sr'
-        validated_data['codice_cliente_sr'] = validated_data.get('codice_cliente_sr') or str(uuid.uuid4().int >> 64)
-        return super().create(validated_data)
+    def validate(self, data):
+        # Generate 'codice_cliente_sr' if it's missing or blank
+        if not data.get('codice_cliente_sr'):
+            data['codice_cliente_sr'] = str(uuid.uuid4().int >> 64)
+        return data
 
 
 # Serializer for Puglia DMS
