@@ -1044,7 +1044,7 @@ class CreateCheckoutSessionLinkAPI(APIView):
                     if structure_image:
                         image_url = request.build_absolute_uri(structure_image.image.url)
                     else:
-                        image_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGc1Uuv3qbLCHlOkYv-4xnHf61Fkzvg9xgBQ&s"
+                        image_url = "https://gmapartments-bucket1.s3.eu-south-1.amazonaws.com/logos/gm-logo-cover.png"
 
                     # Define line_items according to Stripe's best practices
                     line_items = [
@@ -1073,8 +1073,8 @@ class CreateCheckoutSessionLinkAPI(APIView):
                         payment_method_types=['card'],
                         line_items=line_items,
                         mode='payment',
-                        success_url='http://localhost:5173/booking/payment-success',
-                        cancel_url='http://localhost:5173/booking/payment-failed',
+                        success_url='https://gm-apartments.it/booking/payment-success',
+                        cancel_url='https://gm-apartments.it/booking/payment-failed',
                     )
 
                     # Add the session ID to the reservation temporarily
