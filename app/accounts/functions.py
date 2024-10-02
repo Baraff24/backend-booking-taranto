@@ -1075,11 +1075,22 @@ def create_new_xml(data, movimento_data, vendor):
         new_xml_content = new_xml_content.decode("utf-8")
         print(f"New XML Content (decoded): {new_xml_content}")
 
-        dms_instance = DmsPugliaXml(structure_id=data['structure_id'])
+        structure_id = data.get('structure_id')
+        if not structure_id:
+            raise ValueError("Missing 'structure_id' in the data.")
+
+        # Retrieve the structure object
+        structure = Structure.objects.get(id=structure_id)
+
+        # Create the DmsPugliaXml instance with the structure
+        dms_instance = DmsPugliaXml(structure=structure)
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
         return new_xml_content
 
+    except Structure.DoesNotExist:
+        print(f"Structure with this id does not exist.")
+        raise ValueError(f"Structure with this id does not exist.")
     except Exception as e:
         print(f"Error creating new XML: {e}")
         raise
