@@ -1078,6 +1078,8 @@ def create_new_xml(data, movimento_data, vendor):
         dms_instance = DmsPugliaXml(structure_id=data['structure_id'])
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
+        return new_xml_content
+
     except Exception as e:
         print(f"Error creating new XML: {e}")
         raise
