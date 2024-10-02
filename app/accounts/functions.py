@@ -1117,21 +1117,26 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
     Save the XML content to the database inside a transaction using default_storage.
     """
     try:
-        structure = Structure.objects.get(id=dms_instance.structure.id)
-        relative_filename = f'dms_puglia_xml/{structure.name}_{movimento_data}.xml'  # Ensure this is in a subdirectory
+        # Verifica che dms_instance abbia una struttura associata
+        if not dms_instance.structure_id:
+            raise ValueError("Missing structure_id in DmsPugliaXml instance.")
+
+        structure = dms_instance.structure
+
+        relative_filename = f'dms_puglia_xml/{structure.name}_{movimento_data}.xml'
 
         print(f"Saving file: {relative_filename}")
         if xml_content:
-
             try:
-
                 # Use default_storage to handle the file save operation
                 content_file = ContentFile(xml_content.encode('utf-8'))
 
                 # Save the file using default_storage
                 saved_path = default_storage.save(relative_filename, content_file)
                 dms_instance.xml.name = saved_path  # Save the relative path in the model
-                dms_instance.save()  # Ensure the instance is saved with the new file path
+
+                # Here is where you would save the object instance
+                dms_instance.save()
 
                 print(f"File saved successfully at: {saved_path}")
 

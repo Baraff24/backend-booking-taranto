@@ -1220,7 +1220,7 @@ class UploadDataDmsPugliaXmlAPI(APIView):
                     xml_file.seek(0)  # Reset the file pointer
 
                     # Create a DmsPugliaXml model instance and save the file
-                    dms_instance = DmsPugliaXml()
+                    dms_instance = DmsPugliaXml(structure_id=serializer.validated_data['structure_id'])
                     filename = f'dms_puglia_movimenti_{datetime.now().strftime("%Y%m%d%H%M%S")}.xml'
 
                     # Save the file to the model's FileField
