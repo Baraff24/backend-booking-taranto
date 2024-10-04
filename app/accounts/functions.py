@@ -4,6 +4,7 @@ This file contains all the functions and decorators used in the accounts app.
 import xml.etree.ElementTree as ET
 import json
 from datetime import timedelta, datetime
+from re import template
 from urllib.parse import urlparse
 
 import django.contrib.auth
@@ -145,14 +146,15 @@ class WhatsAppService:
             TWILIO_AUTH_TOKEN
         )
         self.from_whatsapp_number = TWILIO_NUMBER
+        self.messaging_service_sid = 'MG7bc471ed29f87a3fce5bc75c0da53aab'
 
-    def send_template_message(self, to_number, messaging_service_sid, template_parameters):
+    def send_template_message(self, to_number, template_sid, template_parameters):
         """
         Send a WhatsApp message using a Twilio-approved template.
 
         Args:
             to_number (str): The recipient's phone number in E.164 format.
-            messaging_service_sid (str): The Messaging Service SID for the message.
+            template_sid (str): The SID of the Twilio-approved template.
             template_parameters (list): Parameters to replace in the template.
 
         Returns:
@@ -161,9 +163,10 @@ class WhatsAppService:
         try:
             # Send the WhatsApp message using the Messaging Service SID
             msg = self.client.messages.create(
-                messaging_service_sid=messaging_service_sid,
+                messaging_service_sid=self.messaging_service_sid,
                 to=f'whatsapp:{to_number}',
-                body=self.format_template_body(template_parameters)
+                body=self.format_template_body(template_parameters),
+                content_sid=template_sid
             )
             return msg.sid
         except Exception as e:
