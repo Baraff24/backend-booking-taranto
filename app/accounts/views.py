@@ -1363,7 +1363,7 @@ class SendWhatsAppToAllUsersAPI(APIView):
 
             # Retrieve all users with a valid phone number
             try:
-                users = User.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact='')
+                users = User.objects.exclude(telephone__isnull=True).exclude(telephone__exact='')
                 print(f"Number of users with valid phone numbers: {len(users)}")
             except Exception as e:
                 print(f"Error retrieving users: {e}")
