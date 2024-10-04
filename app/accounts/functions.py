@@ -238,8 +238,11 @@ def send_confirmation_checkout_session_completed(reservation):
         ]
 
         # Define the Messaging Service SID for confirmation
-        guest_template_sid = "send_confirmation_checkout_session_completed_guest"
-        owner_template_sid = "send_confirmation_checkout_session_completed_owner"
+        # guest_template_sid = "send_confirmation_checkout_session_completed_guest"
+        # owner_template_sid = "send_confirmation_checkout_session_completed_owner"
+
+        guest_template_sid = "HX658f51746eeb9ef8f4ca40c9c5c92b4c"
+        owner_template_sid = "HX9da8137893a6ff24066314f6be63317b"
 
         # Queue the message for the guest
         guest_job_id = whatsapp_service.queue_message(
@@ -286,8 +289,11 @@ def send_cancel_reservation_whatsapp_message(reservation):
         ]
 
         # Define the Messaging Service SIDs
-        guest_template_sid = "send_cancel_reservation_whatsapp_message_guest"
-        owner_template_sid = "send_cancel_reservation_whatsapp_message_owner"
+        # guest_template_sid = "send_cancel_reservation_whatsapp_message_guest"
+        # owner_template_sid = "send_cancel_reservation_whatsapp_message_owner"
+
+        guest_template_sid = "HXde2f58fdc731d09fe91bc84ddfb3560b"
+        owner_template_sid = "HX7da22de22b2f46c8b94a552eaefa0cd5"
 
         # Queue the message for the guest
         guest_job_id = whatsapp_service.queue_message(
@@ -457,8 +463,11 @@ def send_self_checkin_whatsapp_message(reservation):
         ]
 
         # Define the Messaging Service SIDs
-        guest_template_sid = "send_self_checkin_guest"
-        owner_template_sid = "send_self_checkin_owner"
+        # guest_template_sid = "send_self_checkin_guest"
+        # owner_template_sid = "send_self_checkin_owner"
+
+        guest_template_sid = "HX454bd1992ce34b4075823847b865075d"
+        owner_template_sid = "HX454bd1992ce34b4075823847b865075d"
 
         # Queue the message for the guest
         guest_job_id = whatsapp_service.queue_message(

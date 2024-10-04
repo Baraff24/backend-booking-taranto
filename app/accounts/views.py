@@ -1349,7 +1349,8 @@ class SendWhatsAppToAllUsersAPI(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         message = serializer.validated_data['message']
-        template_sid = "marketing_message_to_guests"
+        # template_sid = "marketing_message_to_guests"
+        template_sid = "HXb660cd668c95559734a235228ed03af4"
         whatsapp_service = WhatsAppService()
         failed_users = []
         successful_jobs = []
