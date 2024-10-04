@@ -1344,41 +1344,65 @@ class SendWhatsAppToAllUsersAPI(APIView):
         """
         Handles POST requests to send a WhatsApp message to all users.
         """
-        serializer = self.serializer_class(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # Validate the incoming data
+            serializer = self.serializer_class(data=request.data)
+            if not serializer.is_valid():
+                print("Error in serializer validation")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        message = serializer.validated_data['message']
-        # template_sid = "marketing_message_to_guests"
-        template_sid = "HXb660cd668c95559734a235228ed03af4"
-        whatsapp_service = WhatsAppService()
-        failed_users = []
-        successful_jobs = []
+            message = serializer.validated_data['message']
+            template_sid = "HXb660cd668c95559734a235228ed03af4"  # Messaging service SID
+            whatsapp_service = WhatsAppService()
+            failed_users = []
+            successful_jobs = []
 
-        template_parameters = [
-            {"type": "text", "text": message}  # This replaces {{1}} in the template
-        ]
+            template_parameters = [
+                {"type": "text", "text": message}  # This replaces {{1}} in the template
+            ]
 
-        # Retrieve all users with a valid phone number
-        users = User.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact='')
+            # Retrieve all users with a valid phone number
+            try:
+                users = User.objects.exclude(phone_number__isnull=True).exclude(phone_number__exact='')
+                print(f"Number of users with valid phone numbers: {len(users)}")
+            except Exception as e:
+                print(f"Error retrieving users: {e}")
+                return Response({"message": "Error retrieving users"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        for user in users:
-            job_id = whatsapp_service.queue_message(
-                user.phone_number,
-                template_sid,
-                template_parameters
-            )
-            if job_id:
-                successful_jobs.append({"user": user.id, "job_id": job_id})
-            else:
-                failed_users.append({"user": user.id, "phone_number": user.phone_number})
+            # Iterate over each user and queue WhatsApp message
+            for user in users:
+                try:
+                    job_id = whatsapp_service.queue_message(
+                        user.phone_number,
+                        template_sid,
+                        template_parameters
+                    )
+                    if job_id:
+                        successful_jobs.append({"user": user.id, "job_id": job_id})
+                        print(f"Message queued successfully for user ID: {user.id}")
+                    else:
+                        failed_users.append({"user": user.id, "phone_number": user.phone_number})
+                        print(f"Failed to queue message for user ID: {user.id}")
+                except Exception as e:
+                    print(f"Error queuing message for user ID {user.id}: {e}")
+                    failed_users.append({"user": user.id, "phone_number": user.phone_number})
 
-        if failed_users:
+            # Check if there were any failures
+            if failed_users:
+                print(f"Some messages could not be queued. Failed users: {failed_users}")
+                return Response({
+                    "message": "Some messages could not be queued.",
+                    "failed_users": failed_users,
+                    "successful_jobs": successful_jobs
+                }, status=status.HTTP_207_MULTI_STATUS)
+
+            # If all messages were queued successfully
+            print(f"Messages queued successfully for all users.")
             return Response({
-                "message": "Some messages could not be queued.",
-                "failed_users": failed_users,
+                "message": "Messages queued successfully.",
                 "successful_jobs": successful_jobs
-            }, status=status.HTTP_207_MULTI_STATUS)
+            }, status=status.HTTP_200_OK)
 
-        return Response({"message": "Messages queued successfully.", "successful_jobs": successful_jobs},
-                        status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Unexpected error in SendWhatsAppToAllUsersAPI: {e}")
+            return Response({"message": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
