@@ -1373,7 +1373,7 @@ class SendWhatsAppToAllUsersAPI(APIView):
             for user in users:
                 try:
                     job_id = whatsapp_service.queue_message(
-                        user.phone_number,
+                        user.telephone,
                         template_sid,
                         template_parameters
                     )
@@ -1381,11 +1381,11 @@ class SendWhatsAppToAllUsersAPI(APIView):
                         successful_jobs.append({"user": user.id, "job_id": job_id})
                         print(f"Message queued successfully for user ID: {user.id}")
                     else:
-                        failed_users.append({"user": user.id, "phone_number": user.phone_number})
+                        failed_users.append({"user": user.id, "phone_number": user.telephone})
                         print(f"Failed to queue message for user ID: {user.id}")
                 except Exception as e:
                     print(f"Error queuing message for user ID {user.id}: {e}")
-                    failed_users.append({"user": user.id, "phone_number": user.phone_number})
+                    failed_users.append({"user": user.id, "phone_number": user.telephone})
 
             # Check if there were any failures
             if failed_users:
