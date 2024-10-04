@@ -146,41 +146,51 @@ class WhatsAppService:
         )
         self.from_whatsapp_number = TWILIO_NUMBER
 
-    def send_template_message(self, to_number, template_sid, template_parameters):
+    def send_template_message(self, to_number, messaging_service_sid, template_parameters):
         """
         Send a WhatsApp message using a Twilio-approved template.
 
         Args:
             to_number (str): The recipient's phone number in E.164 format.
-            template_sid (str): The template SID for the message.
-            template_parameters (dict): Parameters to replace in the template.
+            messaging_service_sid (str): The Messaging Service SID for the message.
+            template_parameters (list): Parameters to replace in the template.
 
         Returns:
             str: The SID of the sent message or None if failed.
         """
         try:
+            # Send the WhatsApp message using the Messaging Service SID
             msg = self.client.messages.create(
-                from_=f'whatsapp:{self.from_whatsapp_number}',
+                messaging_service_sid=messaging_service_sid,
                 to=f'whatsapp:{to_number}',
-                template={
-                    'name': template_sid,
-                    'language': {'code': 'it'},
-                    'components': [{'type': 'body', 'parameters': template_parameters}]
-                }
+                body=self.format_template_body(template_parameters)
             )
             return msg.sid
         except Exception as e:
             print(f"Failed to send WhatsApp template message: {str(e)}")
             return None
 
-    def queue_message(self, to_number, template_sid, template_parameters):
+    @staticmethod
+    def format_template_body(template_parameters):
+        """
+        Formats the template parameters into a message body for Twilio.
+
+        Args:
+            template_parameters (list): A list of parameters to replace in the template.
+
+        Returns:
+            str: A formatted message body string.
+        """
+        return " ".join([param['text'] for param in template_parameters])
+
+    def queue_message(self, to_number, messaging_service_sid, template_parameters):
         """
         Queue a WhatsApp message to be sent later via Redis.
 
         Args:
             to_number (str): The recipient's phone number in E.164 format.
-            template_sid (str): The template SID for the message.
-            template_parameters (dict): Parameters to replace in the template.
+            messaging_service_sid (str): The Messaging Service SID for the message.
+            template_parameters (list): Parameters to replace in the template.
 
         Returns:
             str: The job ID of the queued task.
@@ -190,10 +200,9 @@ class WhatsAppService:
             _, queue = get_redis_connection_and_queue()
 
             # Enqueue the send_message function with its arguments
-            job = queue.enqueue(self.send_template_message, to_number, template_sid, template_parameters)
+            job = queue.enqueue(self.send_template_message, to_number, messaging_service_sid, template_parameters)
             return job.id
         except Exception as e:
-            # Log the exception here
             print(f"Failed to queue WhatsApp message: {str(e)}")
             return None
 
@@ -202,39 +211,38 @@ def send_confirmation_checkout_session_completed(reservation):
     try:
         whatsapp_service = WhatsAppService()
 
-        # Prepare template parameters
+        # Prepare template parameters for the guest
         guest_template_parameters = [
-            {"type": "text", "text": reservation.user.first_name},  # {{1}} for guest's first name
-            {"type": "text", "text": str(reservation.id)},  # {{2}} for reservation ID
-            {"type": "text", "text": reservation.first_name_on_reservation},  # {{3}} guest first name
-            {"type": "text", "text": reservation.last_name_on_reservation},  # {{4}} guest last name
-            {"type": "text", "text": reservation.email_on_reservation},  # {{5}} email
-            {"type": "text", "text": reservation.phone_on_reservation},  # {{6}} phone
-            {"type": "text", "text": reservation.room.structure.name},  # {{7}} structure name
-            {"type": "text", "text": reservation.room.name},  # {{8}} room name
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{9}} check-in date
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{10}} check-out date
+            {"type": "text", "text": reservation.user.first_name},
+            {"type": "text", "text": str(reservation.id)},
+            {"type": "text", "text": reservation.first_name_on_reservation},
+            {"type": "text", "text": reservation.last_name_on_reservation},
+            {"type": "text", "text": reservation.email_on_reservation},
+            {"type": "text", "text": reservation.phone_on_reservation},
+            {"type": "text", "text": reservation.room.structure.name},
+            {"type": "text", "text": reservation.room.name},
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
         ]
 
+        # Prepare template parameters for the owner
         owner_template_parameters = [
-            {"type": "text", "text": reservation.first_name_on_reservation},  # {{1}} guest first name
-            {"type": "text", "text": reservation.last_name_on_reservation},  # {{2}} guest last name
-            {"type": "text", "text": reservation.email_on_reservation},  # {{3}} email
-            {"type": "text", "text": reservation.phone_on_reservation},  # {{4}} phone
-            {"type": "text", "text": reservation.room.structure.name},  # {{5}} structure name
-            {"type": "text", "text": reservation.room.name},  # {{6}} room name
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{7}} check-in date
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{8}} check-out date
+            {"type": "text", "text": reservation.first_name_on_reservation},
+            {"type": "text", "text": reservation.last_name_on_reservation},
+            {"type": "text", "text": reservation.email_on_reservation},
+            {"type": "text", "text": reservation.phone_on_reservation},
+            {"type": "text", "text": reservation.room.structure.name},
+            {"type": "text", "text": reservation.room.name},
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
         ]
 
-        # Define the template SID for confirmation (get this from Twilio Console)
+        # Define the Messaging Service SID for confirmation
         guest_template_sid = "send_confirmation_checkout_session_completed_guest"
-
-        # Define the template SID for the owner message
         owner_template_sid = "send_confirmation_checkout_session_completed_owner"
 
-        # Queue the message for the user
-        job_id = whatsapp_service.queue_message(
+        # Queue the message for the guest
+        guest_job_id = whatsapp_service.queue_message(
             reservation.phone_on_reservation,
             guest_template_sid,
             guest_template_parameters
@@ -247,9 +255,9 @@ def send_confirmation_checkout_session_completed(reservation):
             owner_template_parameters
         )
 
-        if job_id and owner_job_id:
-            print(f"WhatsApp message queued successfully with job ID: {job_id}")
-            return job_id, owner_job_id
+        if guest_job_id and owner_job_id:
+            print(f"WhatsApp message queued successfully with job ID: {guest_job_id}")
+            return guest_job_id, owner_job_id
         else:
             print("Failed to queue the WhatsApp message.")
             return None
@@ -263,7 +271,7 @@ def send_cancel_reservation_whatsapp_message(reservation):
     try:
         whatsapp_service = WhatsAppService()
 
-        # Prepare template parameters for guest
+        # Prepare template parameters for guest and owner
         template_parameters = [
             {"type": "text", "text": reservation.user.first_name},
             {"type": "text", "text": str(reservation.id)},
@@ -277,14 +285,12 @@ def send_cancel_reservation_whatsapp_message(reservation):
             {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
         ]
 
-        # Define the template SID for confirmation (get this from Twilio Console)
+        # Define the Messaging Service SIDs
         guest_template_sid = "send_cancel_reservation_whatsapp_message_guest"
-
-        # Define the template SID for the owner message
         owner_template_sid = "send_cancel_reservation_whatsapp_message_owner"
 
-        # Queue the message for the user
-        job_id = whatsapp_service.queue_message(
+        # Queue the message for the guest
+        guest_job_id = whatsapp_service.queue_message(
             reservation.phone_on_reservation,
             guest_template_sid,
             template_parameters
@@ -297,9 +303,9 @@ def send_cancel_reservation_whatsapp_message(reservation):
             template_parameters
         )
 
-        if job_id and owner_job_id:
-            print(f"WhatsApp message queued successfully with job ID: {job_id}")
-            return job_id, owner_job_id
+        if guest_job_id and owner_job_id:
+            print(f"WhatsApp message queued successfully with job ID: {guest_job_id}")
+            return guest_job_id, owner_job_id
         else:
             print("Failed to queue the WhatsApp message.")
             return None
@@ -424,39 +430,38 @@ def send_self_checkin_whatsapp_message(reservation):
     try:
         whatsapp_service = WhatsAppService()
 
-        # Prepare template parameters
+        # Prepare template parameters for guest
         guest_template_parameters = [
-            {"type": "text", "text": reservation.user.first_name},  # {{1}} for guest's first name
-            {"type": "text", "text": str(reservation.id)},  # {{2}} for reservation ID
-            {"type": "text", "text": reservation.first_name_on_reservation},  # {{3}} guest first name
-            {"type": "text", "text": reservation.last_name_on_reservation},  # {{4}} guest last name
-            {"type": "text", "text": reservation.email_on_reservation},  # {{5}} email
-            {"type": "text", "text": reservation.phone_on_reservation},  # {{6}} phone
-            {"type": "text", "text": reservation.room.structure.name},  # {{7}} structure name
-            {"type": "text", "text": reservation.room.name},  # {{8}} room name
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{9}} check-in date
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{10}} check-out date
+            {"type": "text", "text": reservation.user.first_name},
+            {"type": "text", "text": str(reservation.id)},
+            {"type": "text", "text": reservation.first_name_on_reservation},
+            {"type": "text", "text": reservation.last_name_on_reservation},
+            {"type": "text", "text": reservation.email_on_reservation},
+            {"type": "text", "text": reservation.phone_on_reservation},
+            {"type": "text", "text": reservation.room.structure.name},
+            {"type": "text", "text": reservation.room.name},
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
         ]
 
+        # Prepare template parameters for owner
         owner_template_parameters = [
-            {"type": "text", "text": reservation.first_name_on_reservation},  # {{1}} guest first name
-            {"type": "text", "text": reservation.last_name_on_reservation},  # {{2}} guest last name
-            {"type": "text", "text": reservation.email_on_reservation},  # {{3}} email
-            {"type": "text", "text": reservation.phone_on_reservation},  # {{4}} phone
-            {"type": "text", "text": reservation.room.structure.name},  # {{5}} structure name
-            {"type": "text", "text": reservation.room.name},  # {{6}} room name
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},  # {{7}} check-in date
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}  # {{8}} check-out date
+            {"type": "text", "text": reservation.first_name_on_reservation},
+            {"type": "text", "text": reservation.last_name_on_reservation},
+            {"type": "text", "text": reservation.email_on_reservation},
+            {"type": "text", "text": reservation.phone_on_reservation},
+            {"type": "text", "text": reservation.room.structure.name},
+            {"type": "text", "text": reservation.room.name},
+            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
+            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
         ]
 
-        # Define the template SID for confirmation (get this from Twilio Console)
+        # Define the Messaging Service SIDs
         guest_template_sid = "send_self_checkin_guest"
-
-        # Define the template SID for the owner message
         owner_template_sid = "send_self_checkin_owner"
 
-        # Queue the message for the user
-        job_id = whatsapp_service.queue_message(
+        # Queue the message for the guest
+        guest_job_id = whatsapp_service.queue_message(
             reservation.phone_on_reservation,
             guest_template_sid,
             guest_template_parameters
@@ -469,9 +474,9 @@ def send_self_checkin_whatsapp_message(reservation):
             owner_template_parameters
         )
 
-        if job_id and owner_job_id:
-            print(f"WhatsApp message queued successfully with job ID: {job_id}")
-            return job_id, owner_job_id
+        if guest_job_id and owner_job_id:
+            print(f"WhatsApp message queued successfully with job ID: {guest_job_id}")
+            return guest_job_id, owner_job_id
         else:
             print("Failed to queue the WhatsApp message.")
             return None
