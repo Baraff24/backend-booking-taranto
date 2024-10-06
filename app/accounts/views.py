@@ -1357,9 +1357,9 @@ class SendWhatsAppToAllUsersAPI(APIView):
             failed_users = []
             successful_jobs = []
 
-            template_parameters = [
-                {"type": "text", "text": message}  # This replaces {{1}} in the template
-            ]
+            template_parameters = {
+                "1": message
+            }
 
             # Retrieve all users with a valid phone number
             try:
