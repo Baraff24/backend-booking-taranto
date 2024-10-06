@@ -165,26 +165,13 @@ class WhatsAppService:
             msg = self.client.messages.create(
                 messaging_service_sid=self.messaging_service_sid,
                 to=f'whatsapp:{to_number}',
-                body=self.format_template_body(template_parameters),
-                content_sid=template_sid
+                content_sid=template_sid,
+                content_variables=json.dumps(template_parameters)
             )
             return msg.sid
         except Exception as e:
             print(f"Failed to send WhatsApp template message: {str(e)}")
             return None
-
-    @staticmethod
-    def format_template_body(template_parameters):
-        """
-        Formats the template parameters into a message body for Twilio.
-
-        Args:
-            template_parameters (list): A list of parameters to replace in the template.
-
-        Returns:
-            str: A formatted message body string.
-        """
-        return " ".join([param['text'] for param in template_parameters])
 
     def queue_message(self, to_number, messaging_service_sid, template_parameters):
         """
@@ -215,30 +202,29 @@ def send_confirmation_checkout_session_completed(reservation):
         whatsapp_service = WhatsAppService()
 
         # Prepare template parameters for the guest
-        guest_template_parameters = [
-            {"type": "text", "text": reservation.user.first_name},
-            {"type": "text", "text": str(reservation.id)},
-            {"type": "text", "text": reservation.first_name_on_reservation},
-            {"type": "text", "text": reservation.last_name_on_reservation},
-            {"type": "text", "text": reservation.email_on_reservation},
-            {"type": "text", "text": reservation.phone_on_reservation},
-            {"type": "text", "text": reservation.room.structure.name},
-            {"type": "text", "text": reservation.room.name},
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
-        ]
+        guest_template_parameters = {
+            "1": reservation.user.first_name,
+            "2": str(reservation.id),
+            "3": reservation.first_name_on_reservation,
+            "4": reservation.last_name_on_reservation,
+            "5": reservation.email_on_reservation,
+            "6": reservation.phone_on_reservation,
+            "7": reservation.room.structure.name,
+            "8": reservation.room.name,
+            "9": reservation.check_in.strftime('%d-%m-%Y'),
+            "10": reservation.check_out.strftime('%d-%m-%Y')
+        }
 
-        # Prepare template parameters for the owner
-        owner_template_parameters = [
-            {"type": "text", "text": reservation.first_name_on_reservation},
-            {"type": "text", "text": reservation.last_name_on_reservation},
-            {"type": "text", "text": reservation.email_on_reservation},
-            {"type": "text", "text": reservation.phone_on_reservation},
-            {"type": "text", "text": reservation.room.structure.name},
-            {"type": "text", "text": reservation.room.name},
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
-        ]
+        owner_template_parameters = {
+            "1": reservation.first_name_on_reservation,
+            "2": reservation.last_name_on_reservation,
+            "3": reservation.email_on_reservation,
+            "4": reservation.phone_on_reservation,
+            "5": reservation.room.structure.name,
+            "6": reservation.room.name,
+            "7": reservation.check_in.strftime('%d-%m-%Y'),
+            "8": reservation.check_out.strftime('%d-%m-%Y')
+        }
 
         # Define the Messaging Service SID for confirmation
         # guest_template_sid = "send_confirmation_checkout_session_completed_guest"
@@ -278,18 +264,18 @@ def send_cancel_reservation_whatsapp_message(reservation):
         whatsapp_service = WhatsAppService()
 
         # Prepare template parameters for guest and owner
-        template_parameters = [
-            {"type": "text", "text": reservation.user.first_name},
-            {"type": "text", "text": str(reservation.id)},
-            {"type": "text", "text": reservation.first_name_on_reservation},
-            {"type": "text", "text": reservation.last_name_on_reservation},
-            {"type": "text", "text": reservation.email_on_reservation},
-            {"type": "text", "text": reservation.phone_on_reservation},
-            {"type": "text", "text": reservation.room.structure.name},
-            {"type": "text", "text": reservation.room.name},
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
-        ]
+        template_parameters = {
+            "1": reservation.user.first_name,
+            "2": str(reservation.id),
+            "3": reservation.first_name_on_reservation,
+            "4": reservation.last_name_on_reservation,
+            "5": reservation.email_on_reservation,
+            "6": reservation.phone_on_reservation,
+            "7": reservation.room.structure.name,
+            "8": reservation.room.name,
+            "9": reservation.check_in.strftime('%d-%m-%Y'),
+            "10": reservation.check_out.strftime('%d-%m-%Y')
+        }
 
         # Define the Messaging Service SIDs
         # guest_template_sid = "send_cancel_reservation_whatsapp_message_guest"
@@ -440,30 +426,30 @@ def send_self_checkin_whatsapp_message(reservation):
         whatsapp_service = WhatsAppService()
 
         # Prepare template parameters for guest
-        guest_template_parameters = [
-            {"type": "text", "text": reservation.user.first_name},
-            {"type": "text", "text": str(reservation.id)},
-            {"type": "text", "text": reservation.first_name_on_reservation},
-            {"type": "text", "text": reservation.last_name_on_reservation},
-            {"type": "text", "text": reservation.email_on_reservation},
-            {"type": "text", "text": reservation.phone_on_reservation},
-            {"type": "text", "text": reservation.room.structure.name},
-            {"type": "text", "text": reservation.room.name},
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
-        ]
+        guest_template_parameters = {
+            "1": reservation.user.first_name,
+            "2": str(reservation.id),
+            "3": reservation.first_name_on_reservation,
+            "4": reservation.last_name_on_reservation,
+            "5": reservation.email_on_reservation,
+            "6": reservation.phone_on_reservation,
+            "7": reservation.room.structure.name,
+            "8": reservation.room.name,
+            "9": reservation.check_in.strftime('%d-%m-%Y'),
+            "10": reservation.check_out.strftime('%d-%m-%Y')
+        }
 
-        # Prepare template parameters for owner
-        owner_template_parameters = [
-            {"type": "text", "text": reservation.first_name_on_reservation},
-            {"type": "text", "text": reservation.last_name_on_reservation},
-            {"type": "text", "text": reservation.email_on_reservation},
-            {"type": "text", "text": reservation.phone_on_reservation},
-            {"type": "text", "text": reservation.room.structure.name},
-            {"type": "text", "text": reservation.room.name},
-            {"type": "text", "text": reservation.check_in.strftime('%d-%m-%Y')},
-            {"type": "text", "text": reservation.check_out.strftime('%d-%m-%Y')}
-        ]
+        # Prepare template parameters for the owner
+        owner_template_parameters = {
+            "1": reservation.first_name_on_reservation,
+            "2": reservation.last_name_on_reservation,
+            "3": reservation.email_on_reservation,
+            "4": reservation.phone_on_reservation,
+            "5": reservation.room.structure.name,
+            "6": reservation.room.name,
+            "7": reservation.check_in.strftime('%d-%m-%Y'),
+            "8": reservation.check_out.strftime('%d-%m-%Y')
+        }
 
         # Define the Messaging Service SIDs
         # guest_template_sid = "send_self_checkin_guest"
