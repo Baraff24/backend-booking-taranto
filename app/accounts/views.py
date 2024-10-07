@@ -918,12 +918,20 @@ class RentRoomAPI(APIView):
             check_in = datetime.combine(check_in_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
             check_out = datetime.combine(check_out_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
 
+            # Update the status of any unpaid reservations that have passed the 10-minute timeout to CANCELED
+            unpaid_timeout = timezone.now() - timedelta(minutes=10)
+            Reservation.objects.filter(
+                room=room,
+                status=UNPAID,
+                created_at__lt=unpaid_timeout
+            ).update(status=CANCELED)
+
             # Check if the room is available in the local database
             conflicting_reservations = Reservation.objects.filter(
                 room=room,
                 check_in__lt=check_out,
                 check_out__gt=check_in
-            )
+            ).exclude(status=CANCELED)
 
             if conflicting_reservations.exists():
                 return Response({'error': 'Room is not available for the selected dates.'},
