@@ -910,7 +910,7 @@ class RentRoomAPI(APIView):
         serializer = self.serializer_class(data=request.data)
 
         if serializer.is_valid():
-            room = serializer.validated_data['room']  # Room is already validated and attached in the serializer
+            room = serializer.validated_data['room']
             check_in_date = serializer.validated_data['check_in']
             check_out_date = serializer.validated_data['check_out']
 
@@ -918,7 +918,7 @@ class RentRoomAPI(APIView):
             check_in = datetime.combine(check_in_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
             check_out = datetime.combine(check_out_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
 
-            # Update the status of any unpaid reservations that have passed the 10-minute timeout to CANCELED
+            # Update unpaid reservations that have passed the 10-minute timeout to CANCELED
             unpaid_timeout = timezone.now() - timedelta(minutes=10)
             Reservation.objects.filter(
                 room=room,
@@ -937,13 +937,14 @@ class RentRoomAPI(APIView):
                 return Response({'error': 'Room is not available for the selected dates.'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
-            # Check if the room is available on Google Calendar
+            # Check room availability on Google Calendar
             try:
                 service = get_google_calendar_service()
                 if not service:
                     return Response({'error': 'Google Calendar service unavailable.'},
                                     status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+                # Check for Google Calendar events that conflict with the reservation dates
                 events_result = service.events().list(
                     calendarId=room.calendar_id,
                     timeMin=check_in.isoformat(),
@@ -951,13 +952,19 @@ class RentRoomAPI(APIView):
                     singleEvents=True,
                     orderBy='startTime'
                 ).execute()
-                events = events_result.get('items', [])
 
+                events = events_result.get('items', [])
                 if events:
                     return Response({
                         'error': 'Room is not available for the selected dates due to existing Google Calendar events.'},
                         status=status.HTTP_400_BAD_REQUEST)
+
             except Exception as e:
+                # Handle specific errors related to invalid or expired Google Calendar tokens
+                if "invalid_grant" in str(e):
+                    return Response({
+                        'error': 'Google Calendar token has expired or been revoked. Please reauthenticate.'},
+                        status=status.HTTP_401_UNAUTHORIZED)
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             # If the room is available, create the reservation
@@ -970,6 +977,7 @@ class RentRoomAPI(APIView):
 
             # Return the updated serializer to show all the fields
             return Response(self.serializer_class(reservation).data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
