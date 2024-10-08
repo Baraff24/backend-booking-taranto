@@ -589,21 +589,23 @@ def calculate_discount(reservation):
 
 
 def get_google_calendar_service():
-    cached_credentials = cache.get('google_calendar_credentials')
+    try:
+        # Check if the credentials are in the cache
+        cached_credentials = cache.get('google_calendar_credentials')
 
-    if cached_credentials:
-        # If the credentials are cached, we can use them directly
-        credentials_data = json.loads(cached_credentials)
-        credentials = Credentials(
-            token=credentials_data['token'],
-            refresh_token=credentials_data.get('refresh_token'),
-            token_uri=credentials_data['token_uri'],
-            client_id=credentials_data['client_id'],
-            client_secret=credentials_data['client_secret'],
-            scopes=credentials_data['scopes']
-        )
-    else:
-        try:
+        if cached_credentials:
+            # Use the cached credentials
+            credentials_data = json.loads(cached_credentials)
+            credentials = Credentials(
+                token=credentials_data['token'],
+                refresh_token=credentials_data.get('refresh_token'),
+                token_uri=credentials_data['token_uri'],
+                client_id=credentials_data['client_id'],
+                client_secret=credentials_data['client_secret'],
+                scopes=credentials_data['scopes']
+            )
+        else:
+            # If the credentials are not in the cache, retrieve them from the database
             creds = GoogleOAuthCredentials.objects.get(id=1)
             credentials = Credentials(
                 token=creds.token,
@@ -611,14 +613,17 @@ def get_google_calendar_service():
                 token_uri=creds.token_uri,
                 client_id=creds.client_id,
                 client_secret=creds.client_secret,
-                scopes=creds.scopes.split()
+                scopes=creds.scopes.split()  # Convert scopes string to list
             )
 
-            # Refresh the token if it's expired
-            if credentials.expired and credentials.refresh_token:
+        # Verify if the credentials are expired and refresh them if necessary
+        if credentials.expired and credentials.refresh_token:
+            try:
                 credentials.refresh(Request())
+            except Exception as e:
+                raise Exception(f"Errore durante il refresh del token: {str(e)}")
 
-            # Memorize the credentials in the cache
+            # Update the cache with the new credentials
             credentials_data = {
                 'token': credentials.token,
                 'refresh_token': credentials.refresh_token,
@@ -628,14 +633,23 @@ def get_google_calendar_service():
                 'scopes': credentials.scopes
             }
             cache.set('google_calendar_credentials', json.dumps(credentials_data), 3600)
-        except GoogleOAuthCredentials.DoesNotExist:
-            raise Exception("Google Calendar credentials not found.")
-        except Exception as e:
-            raise Exception(f"Failed to create Google Calendar service: {str(e)}")
 
-    # Build the service
-    service = build('calendar', 'v3', credentials=credentials)
-    return service
+            # Update the credentials in the database
+            GoogleOAuthCredentials.objects.filter(id=1).update(
+                token=credentials.token
+            )
+
+    except GoogleOAuthCredentials.DoesNotExist:
+        raise Exception("Credenziali di Google Calendar non trovate nel database.")
+    except Exception as e:
+        raise Exception(f"Errore nel recupero delle credenziali di Google Calendar: {str(e)}")
+
+    # Build the Google Calendar service
+    try:
+        service = build('calendar', 'v3', credentials=credentials)
+        return service
+    except Exception as e:
+        raise Exception(f"Errore durante la costruzione del servizio Google Calendar: {str(e)}")
 
 
 def add_reservation_to_google_calendar(service, reservation):
