@@ -4,7 +4,6 @@ This file contains all the functions and decorators used in the accounts app.
 import xml.etree.ElementTree as ET
 import json
 from datetime import timedelta, datetime
-from re import template
 from urllib.parse import urlparse
 
 import django.contrib.auth
@@ -591,10 +590,12 @@ def calculate_discount(reservation):
 def get_google_calendar_service():
     try:
         # Check if the credentials are cached
+        print("Checking if credentials are cached...")
         cached_credentials = cache.get('google_calendar_credentials')
 
         if cached_credentials:
             # Use the cached credentials
+            print("Using cached credentials...")
             credentials_data = json.loads(cached_credentials)
             credentials = Credentials(
                 token=credentials_data['token'],
@@ -606,24 +607,33 @@ def get_google_calendar_service():
             )
         else:
             # Retrieve the credentials from the database
+            print("No cached credentials found. Retrieving credentials from the database...")
             creds = GoogleOAuthCredentials.objects.get(id=1)
+            print(f"Retrieved credentials from DB: {creds}")
             credentials = Credentials(
                 token=creds.token,
                 refresh_token=creds.refresh_token,
                 token_uri=creds.token_uri,
                 client_id=creds.client_id,
                 client_secret=creds.client_secret,
-                scopes=creds.scopes.split()  # Converti gli scopes in una lista
+                scopes=creds.scopes.split()  # Convert scopes string to list
             )
+            print("Credentials loaded from database successfully.")
 
         # Verify if the credentials are expired and refresh them if necessary
+        if credentials.expired:
+            print("Credentials expired. Checking if refresh token is available...")
+        else:
+            print("Credentials are still valid. No need for refresh.")
+
         if credentials.expired and credentials.refresh_token:
             try:
                 print("Trying to refresh the access token...")
                 credentials.refresh(Request())
-                print("Token refreshed successfully.")
+                print("Access token refreshed successfully.")
 
                 # Cache the refreshed credentials
+                print("Caching refreshed credentials...")
                 credentials_data = {
                     'token': credentials.token,
                     'refresh_token': credentials.refresh_token,
@@ -635,28 +645,38 @@ def get_google_calendar_service():
                 cache.set('google_calendar_credentials', json.dumps(credentials_data), 3600)
 
                 # Update the token in the database
+                print("Updating credentials in the database...")
                 GoogleOAuthCredentials.objects.filter(id=1).update(
                     token=credentials.token
                 )
+                print("Database updated with new token.")
             except Exception as e:
-                print(f"Error refreshing token: {e}")
+                print(f"Error while refreshing token: {e}")
                 if "invalid_grant" in str(e):
                     # The refresh token has expired or been revoked
-                    print("Refresh token has expired or been revoked. Please reauthenticate.")
-                    raise Exception("Il token di aggiornamento è scaduto o revocato. L'utente deve autenticarsi di nuovo.")
-                raise Exception(f"Errore durante il refresh del token: {str(e)}")
+                    print("Refresh token has expired or been revoked. Reauthentication needed.")
+                    raise Exception("The refresh token has expired or been revoked. The user needs to reauthenticate.")
+                raise Exception(f"Error during token refresh: {str(e)}")
+        else:
+            print("No need to refresh the token.")
 
     except GoogleOAuthCredentials.DoesNotExist:
-        raise Exception("Credenziali di Google Calendar non trovate nel database.")
+        print("Google Calendar credentials not found in the database.")
+        raise Exception("Google Calendar credentials not found in the database.")
     except Exception as e:
-        raise Exception(f"Errore nel recupero delle credenziali di Google Calendar: {str(e)}")
+        print(f"Error while retrieving Google Calendar credentials: {e}")
+        raise Exception(f"Error retrieving Google Calendar credentials: {str(e)}")
 
     # Build the Google Calendar service
     try:
+        print("Building Google Calendar service...")
         service = build('calendar', 'v3', credentials=credentials)
+        print("Google Calendar service built successfully.")
         return service
     except Exception as e:
-        raise Exception(f"Errore durante la costruzione del servizio Google Calendar: {str(e)}")
+        print(f"Error while building Google Calendar service: {e}")
+        raise Exception(f"Error building Google Calendar service: {str(e)}")
+
 
 def add_reservation_to_google_calendar(service, reservation):
     try:
