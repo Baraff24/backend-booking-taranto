@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Set the paths for static, media, and log files
 ENV STATIC_ROOT=/data/static/
 ENV MEDIA_ROOT=/data/media/
-ENV LOG_ROOT=/data/log/
+ENV LOG_ROOT=/app/logs/
 
 # Install necessary packages
 RUN apt-get update \
