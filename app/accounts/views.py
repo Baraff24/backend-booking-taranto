@@ -960,11 +960,6 @@ class RentRoomAPI(APIView):
                         status=status.HTTP_400_BAD_REQUEST)
 
             except Exception as e:
-                # Handle specific errors related to invalid or expired Google Calendar tokens
-                if "invalid_grant" in str(e):
-                    return Response({
-                        'error': 'Google Calendar token has expired or been revoked. Please reauthenticate.'},
-                        status=status.HTTP_401_UNAUTHORIZED)
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             # If the room is available, create the reservation
