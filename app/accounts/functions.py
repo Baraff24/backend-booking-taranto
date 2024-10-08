@@ -46,7 +46,7 @@ User = django.contrib.auth.get_user_model()
 EMAIL = config('EMAIL_HOST_USER', '')
 CACHE_KEY = 'google_calendar_credentials'
 CACHE_TIMEOUT = 3600  # 1 hour cache timeout
-logger = logging.getLogger("logger")
+logger = logging.getLogger(__name__)
 
 
 #####################################################################################

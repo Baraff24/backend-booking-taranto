@@ -2,6 +2,7 @@
 This module contains the views of the accounts app.
 """
 import io
+import logging
 
 import pytz
 import stripe
@@ -44,6 +45,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+logger = logging.getLogger(__name__)
 
 
 class UsersListAPI(APIView):
@@ -697,56 +699,87 @@ class GoogleCalendarInitAPI(APIView):
 
     @staticmethod
     def get(request):
-        flow = Flow.from_client_config(
-            {
-                "web": {
-                    "client_id": settings.GOOGLE_CLIENT_ID,
-                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token"
-                }
-            },
-            redirect_uri=settings.GOOGLE_REDIRECT_URI,
-            scopes=['https://www.googleapis.com/auth/calendar']
-        )
-        auth_url, _ = flow.authorization_url(prompt='consent')
-        return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
+        try:
+            # Crea il flusso OAuth2 per Google Calendar
+            flow = Flow.from_client_config(
+                {
+                    "web": {
+                        "client_id": settings.GOOGLE_CLIENT_ID,
+                        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                        "redirect_uris": [settings.GOOGLE_REDIRECT_URI],
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token"
+                    }
+                },
+                redirect_uri=settings.GOOGLE_REDIRECT_URI,
+                scopes=['https://www.googleapis.com/auth/calendar']
+            )
+
+            # Forza Google a chiedere il refresh token con prompt='consent' e access_type='offline'
+            auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
+
+            logger.info("Generated Google Calendar authorization URL.")
+            return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error generating Google Calendar authorization URL: {str(e)}")
+            return Response({'error': 'Failed to generate authorization URL.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GoogleCalendarRedirectAPI(APIView):
+
     @staticmethod
     def get(request):
         code = request.GET.get('code')
-        flow = Flow.from_client_config(
-            {
-                "web": {
-                    "client_id": settings.GOOGLE_CLIENT_ID,
-                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token"
-                }
-            },
-            redirect_uri=settings.GOOGLE_REDIRECT_URI,
-            scopes=['https://www.googleapis.com/auth/calendar']
-        )
-        flow.fetch_token(code=code)
-        credentials = flow.credentials
 
-        GoogleOAuthCredentials.objects.update_or_create(
-            id=1,
-            defaults={
-                'token': credentials.token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': credentials.token_uri,
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': ' '.join(credentials.scopes)
-            }
-        )
-        return Response({'message': 'Google Calendar credentials have been successfully updated.'},
-                        status=status.HTTP_200_OK)
+        if not code:
+            logger.warning("No authorization code provided in the redirect request.")
+            return Response({'error': 'No authorization code provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Inizia il flusso di autenticazione OAuth2
+            flow = Flow.from_client_config(
+                {
+                    "web": {
+                        "client_id": settings.GOOGLE_CLIENT_ID,
+                        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                        "redirect_uris": [settings.GOOGLE_REDIRECT_URI],
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token"
+                    }
+                },
+                redirect_uri=settings.GOOGLE_REDIRECT_URI,
+                scopes=['https://www.googleapis.com/auth/calendar']
+            )
+
+            # Scambia il codice di autorizzazione con un token
+            flow.fetch_token(code=code)
+            credentials = flow.credentials
+
+            logger.info(f"Successfully fetched credentials for Google Calendar with client ID: {credentials.client_id}")
+
+            # Aggiorna o crea le credenziali nel database
+            GoogleOAuthCredentials.objects.update_or_create(
+                id=1,
+                defaults={
+                    'token': credentials.token,
+                    'refresh_token': credentials.refresh_token,
+                    'token_uri': credentials.token_uri,
+                    'client_id': credentials.client_id,
+                    'client_secret': credentials.client_secret,
+                    'scopes': ' '.join(credentials.scopes)
+                }
+            )
+
+            logger.info("Google Calendar credentials updated successfully in the database.")
+            return Response({'message': 'Google Calendar credentials have been successfully updated.'},
+                            status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error during token exchange in Google Calendar Redirect API: {str(e)}")
+            return Response({'error': f"Failed to exchange code for token: {str(e)}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # class CalendarEventsAPI(APIView):
