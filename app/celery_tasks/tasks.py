@@ -32,11 +32,11 @@ def send_self_checkin_reminders():
 
         try:
             # Log before sending email
-            logger.info(f"Sending self check-in email to {reservation.user.email}")
+            logger.info(f"Sending self check-in email to {reservation.email_on_reservation}")
             send_self_checkin_mail(reservation)
 
             # Log before sending WhatsApp message
-            logger.info(f"Sending WhatsApp self check-in message to {reservation.user.phone}")
+            logger.info(f"Sending WhatsApp self check-in message to {reservation.phone_on_reservation}")
             send_self_checkin_whatsapp_message(reservation)
 
             logger.info(f"Successfully sent check-in reminders to {reservation.user.email}")
