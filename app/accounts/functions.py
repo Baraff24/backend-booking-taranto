@@ -1035,7 +1035,7 @@ def generate_dms_puglia_xml(data, vendor):
         if not structure_id:
             raise ValueError("Missing 'structure_id' in the data.")
 
-        print(f"Structure ID: {structure_id}, Movimento Data: {movimento_data}")
+        logger.debug(f"Structure ID: {structure_id}, Movimento Data: {movimento_data}")
 
         # Check for existing XML file for the same date and structure
         existing_dms_instance = DmsPugliaXml.objects.filter(
@@ -1043,47 +1043,33 @@ def generate_dms_puglia_xml(data, vendor):
             xml__contains=f'data="{movimento_data}"'
         ).first()
 
-        print(f"Existing DMS Instance: {existing_dms_instance}")
-
         if existing_dms_instance:
             return update_existing_xml(existing_dms_instance, data, movimento_data)
 
         return create_new_xml(data, movimento_data, vendor)
 
     except Exception as e:
-        print(f"Error generating XML: {e}")
+        logger.error(f"Error generating XML: {e}")
         raise
 
 
-def append_structure_data(movimento_el, dati_struttura):
+def append_element_with_text(parent_el, tag, text):
     """
-    Append structure data to the 'movimento' element.
+    Helper function to create a new XML element with text.
     """
-    print("Appending structure data")
-    datistruttura_el = ET.SubElement(movimento_el, "datistruttura")
-    ET.SubElement(datistruttura_el, "cameredisponibili").text = str(dati_struttura['available_rooms'])
-    ET.SubElement(datistruttura_el, "postilettodisponibili").text = str(dati_struttura['total_beds'])
-    ET.SubElement(datistruttura_el, "camereoccupate").text = str(dati_struttura['occupied_rooms'])
+    el = ET.SubElement(parent_el, tag)
+    el.text = str(text) if text else ""
+    return el
 
 
 def append_arrivi_to_movimento(movimento_el, arrivi):
     arrivi_el = ET.SubElement(movimento_el, "arrivi")
     for arrivo in arrivi:
         arrivo_el = ET.SubElement(arrivi_el, "arrivo")
-
-        ET.SubElement(arrivo_el, "codice_cliente_sr").text = arrivo.get("codice_cliente_sr", "")
-        ET.SubElement(arrivo_el, "sesso").text = arrivo.get("sesso", "")
-        ET.SubElement(arrivo_el, "cittadinanza").text = arrivo.get("cittadinanza", "")
-
-        # Add explicit handling for empty paese_residenza
-        ET.SubElement(arrivo_el, "paese_residenza").text = arrivo.get("paese_residenza", " ") or " "
-
-        ET.SubElement(arrivo_el, "comune_residenza").text = arrivo.get("comune_residenza", "")
-        ET.SubElement(arrivo_el, "occupazione_postoletto").text = arrivo.get("occupazione_postoletto", "")
-        ET.SubElement(arrivo_el, "dayuse").text = arrivo.get("dayuse", "")
-        ET.SubElement(arrivo_el, "tipologia_alloggiato").text = arrivo.get("tipologia_alloggiato", "")
-        ET.SubElement(arrivo_el, "eta").text = str(arrivo.get("eta", 0))
-        ET.SubElement(arrivo_el, "duratasoggiorno").text = str(arrivo.get("durata_soggiorno", 0))
+        for key in ['codice_cliente_sr', 'sesso', 'cittadinanza', 'paese_residenza',
+                    'comune_residenza', 'occupazione_postoletto', 'dayuse', 'tipologia_alloggiato', 'eta',
+                    'durata_soggiorno']:
+            append_element_with_text(arrivo_el, key, arrivo.get(key, " "))
 
 
 def update_existing_xml(existing_dms_instance, data, movimento_data):
@@ -1091,10 +1077,9 @@ def update_existing_xml(existing_dms_instance, data, movimento_data):
     Update an existing XML file in the DB for the given structure and date.
     """
     try:
-        print("Updating existing XML")
+        logger.debug("Updating existing XML")
         # Read and parse the existing XML content
         existing_xml_content = existing_dms_instance.xml.read().decode('utf-8')
-        print(f"Existing XML Content: {existing_xml_content}")
 
         tree = ET.ElementTree(ET.fromstring(existing_xml_content))
         root = tree.getroot()
@@ -1107,11 +1092,12 @@ def update_existing_xml(existing_dms_instance, data, movimento_data):
 
         # Save updated XML content back to the database
         updated_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
-        print(f"Updated XML Content: {updated_xml_content}")
         save_xml_to_db(existing_dms_instance, updated_xml_content, movimento_data)
 
+        return updated_xml_content
+
     except Exception as e:
-        print(f"Error processing or saving existing XML: {e}")
+        logger.error(f"Error processing or saving existing XML: {e}")
         raise
 
 
@@ -1170,11 +1156,11 @@ def find_or_create_movimento(root, data, movimento_data):
     """
     Find or create the 'movimento' element in the XML.
     """
-    print("Finding or creating movimento")
-    for movimento in root.findall('movimento'):
-        if movimento.get('data') == movimento_data:
-            return movimento
+    movimento_el = root.find(f"./movimento[@data='{movimento_data}']")
+    if movimento_el is not None:
+        return movimento_el
 
+    # if movimento element does not exist, create a new one
     return ET.SubElement(root, 'movimento', attrib={
         'type': data['type'],
         'data': movimento_data
@@ -1186,38 +1172,23 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
     Save the XML content to the database inside a transaction using default_storage.
     """
+    if not dms_instance.structure_id:
+        raise ValueError("Missing structure_id in DmsPugliaXml instance.")
+
     try:
-        # Verifica che dms_instance abbia una struttura associata
-        if not dms_instance.structure_id:
-            raise ValueError("Missing structure_id in DmsPugliaXml instance.")
-
         structure = dms_instance.structure
-
         relative_filename = f'dms_puglia_xml/{structure.name}_{movimento_data}.xml'
+        logger.debug(f"Saving file: {relative_filename}")
 
-        print(f"Saving file: {relative_filename}")
-        if xml_content:
-            try:
-                # Use default_storage to handle the file save operation
-                content_file = ContentFile(xml_content.encode('utf-8'))
+        content_file = ContentFile(xml_content.encode('utf-8'))
+        saved_path = default_storage.save(relative_filename, content_file)
+        dms_instance.xml.name = saved_path
 
-                # Save the file using default_storage
-                saved_path = default_storage.save(relative_filename, content_file)
-                dms_instance.xml.name = saved_path  # Save the relative path in the model
-
-                # Here is where you would save the object instance
-                dms_instance.save()
-
-                print(f"File saved successfully at: {saved_path}")
-
-            except Exception as e:
-                print(f"Error saving file to the DB: {e}")
-                raise
-        else:
-            raise ValueError("XML content is empty")
+        dms_instance.save()
+        logger.info(f"File saved successfully at: {saved_path}")
 
     except Exception as e:
-        print(f"Error saving XML to database: {e}")
+        logger.error(f"Error saving XML to database: {e}")
         raise
 
 #####################################################################################
