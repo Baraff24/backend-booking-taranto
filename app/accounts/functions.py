@@ -1024,6 +1024,7 @@ def validate_elenco_schedine(structure_id, elenco_schedine):
 # DMS Puglia XML Generation START #
 #####################################################################################
 
+
 def generate_dms_puglia_xml(data, vendor):
     """
     Generate or update a DMS Puglia XML file.
@@ -1062,6 +1063,18 @@ def append_element_with_text(parent_el, tag, text):
     return el
 
 
+def append_componenti_to_arrivo(arrivo_el, componenti):
+    """
+    Append componenti to the <arrivo> element.
+    """
+    componenti_el = ET.SubElement(arrivo_el, "componenti")
+    for componente in componenti:
+        componente_el = ET.SubElement(componenti_el, "componente")
+        for key in ['codice_cliente_sr', 'sesso', 'cittadinanza', 'paese_residenza', 'comune_residenza',
+                    'occupazione_posto_letto', 'eta']:
+            append_element_with_text(componente_el, key, componente.get(key, " "))
+
+
 def append_arrivi_to_movimento(movimento_el, arrivi):
     arrivi_el = ET.SubElement(movimento_el, "arrivi")
     for arrivo in arrivi:
@@ -1070,6 +1083,11 @@ def append_arrivi_to_movimento(movimento_el, arrivi):
                     'comune_residenza', 'occupazione_postoletto', 'dayuse', 'tipologia_alloggiato', 'eta',
                     'durata_soggiorno']:
             append_element_with_text(arrivo_el, key, arrivo.get(key, " "))
+
+        # Handle capo gruppo or capo famiglia (tipologia_alloggiato = 17 or 18)
+        if arrivo.get('tipologia_alloggiato') in ['17', '18']:
+            componenti = arrivo.get('componenti', [])
+            append_componenti_to_arrivo(arrivo_el, componenti)
 
 
 def update_existing_xml(existing_dms_instance, data, movimento_data):
@@ -1106,7 +1124,7 @@ def create_new_xml(data, movimento_data, vendor):
     Create a new XML file in the DB for the given structure and date.
     """
     try:
-        print("Creating new XML")
+        logger.debug("Creating new XML")
         # Create the root element for the new XML
         root = ET.Element("movimenti", attrib={
             'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
@@ -1123,13 +1141,12 @@ def create_new_xml(data, movimento_data, vendor):
 
         # Save new XML content to the database
         new_xml_content = ET.tostring(root, encoding="utf-8", method="xml")
-        print(f"New XML Content (bytes): {new_xml_content}")
 
         if new_xml_content is None:
             raise ValueError("Failed to generate XML content")
 
         new_xml_content = new_xml_content.decode("utf-8")
-        print(f"New XML Content (decoded): {new_xml_content}")
+        logger.debug(f"New XML Content (decoded): {new_xml_content}")
 
         structure_id = data.get('structure_id')
         if not structure_id:
@@ -1145,10 +1162,10 @@ def create_new_xml(data, movimento_data, vendor):
         return new_xml_content
 
     except Structure.DoesNotExist:
-        print(f"Structure with this id does not exist.")
+        logger.error(f"Structure with this id does not exist.")
         raise ValueError(f"Structure with this id does not exist.")
     except Exception as e:
-        print(f"Error creating new XML: {e}")
+        logger.error(f"Error creating new XML: {e}")
         raise
 
 
