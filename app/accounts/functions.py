@@ -1177,7 +1177,7 @@ def create_new_xml(data, movimento_data, vendor, structure):
         logger.debug(f"New XML Content (decoded): {new_xml_content}")
 
         # Create the DmsPugliaXml instance with the structure and date
-        dms_instance = DmsPugliaXml(structure=structure, date=movimento_data)
+        dms_instance = DmsPugliaXml(structure=structure, date=movimento_data)  # Ensure date is set
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
         return new_xml_content
@@ -1185,6 +1185,7 @@ def create_new_xml(data, movimento_data, vendor, structure):
     except Exception as e:
         logger.error(f"Error creating new XML: {e}")
         raise
+
 
 
 def find_or_create_movimento(root, data, movimento_data):
