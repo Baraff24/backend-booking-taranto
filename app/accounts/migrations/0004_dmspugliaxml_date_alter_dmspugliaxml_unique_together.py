@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='dmspugliaxml',
             name='date',
-            field=models.DateField(default=0.0004940711462450593),
+            field=models.DateField(default='2024-10-10'),
             preserve_default=False,
         ),
         migrations.AlterUniqueTogether(
