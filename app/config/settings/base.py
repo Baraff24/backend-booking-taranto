@@ -239,7 +239,7 @@ LOGGING = {
         },
         'accounts': {
             'handlers': ['console', 'file'],
-            'level': 'INFO', # or 'DEBUG' for more logs (testing)
+            'level': 'DEBUG', # or 'DEBUG' for more logs (testing)
             'propagate': False,
         },
     },
