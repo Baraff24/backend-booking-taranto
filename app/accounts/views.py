@@ -19,7 +19,7 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         is_room_available, handle_checkout_session_completed, parse_soap_response,
                         build_soap_envelope,
                         send_soap_request, send_account_deletion_email, WhatsAppService, generate_dms_puglia_xml,
-                        get_busy_dates_from_calendars)
+                        get_busy_dates_from_calendars, get_combined_busy_dates)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
     CheckinCategoryChoices, DmsPugliaXml
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
@@ -903,27 +903,34 @@ class AvailableRoomsForDatesAPI(APIView):
         ).exclude(
             Q(reservations__check_in__lt=check_out, reservations__check_out__gt=check_in) &
             (
-                    Q(reservations__status=PAID) |
-                    Q(reservations__status=UNPAID, reservations__created_at__gte=current_time - timedelta(minutes=10)) |
-                    Q(reservations__status=CANCELED)
+                Q(reservations__status=PAID) |
+                Q(reservations__status=UNPAID, reservations__created_at__gte=current_time - timedelta(minutes=10)) |
+                Q(reservations__status=CANCELED)
             )
         ).select_related('structure').distinct()
 
         final_available_rooms = []
 
-        # Check availability for each room with Google Calendar and return only the available ones
+        # Check availability for each room with local reservations and Google Calendars
         for room in available_rooms:
             try:
+                # Get combined busy dates from reservations and both Google Calendars
+                busy_dates = get_combined_busy_dates(room, check_in, check_out)
 
-                busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
-
+                # Check if the room is available
                 is_available = is_room_available(busy_dates, check_in, check_out)
 
-                if is_available:
-                    final_available_rooms.append(self.serializer_class(room).data)
+                if not is_available:
+                    logger.info(
+                        f"Room {room.id} is not available for dates {check_in} to {check_out}"
+                    )
+                    continue
+
+                final_available_rooms.append(self.serializer_class(room).data)
+
             except Exception as e:
-                print(f'Error checking availability for room {room.name}: {str(e)}')
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logger.error(f"Error checking availability for room {room.name}: {str(e)}")
+                return Response({'error': 'Error checking room availability.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(final_available_rooms, status=status.HTTP_200_OK)
 

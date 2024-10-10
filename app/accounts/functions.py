@@ -739,6 +739,9 @@ def get_busy_dates_from_reservations(room, check_in, check_out):
 
 
 def get_busy_dates_from_calendars(service, room, check_in, check_out):
+    """
+    Get busy dates from both Google Calendars associated with the room.
+    """
     busy_dates = set()
     calendar_ids = [room.calendar_id, room.calendar_id_booking]
 
@@ -787,12 +790,15 @@ def get_busy_dates_from_calendars(service, room, check_in, check_out):
             logger.debug(f"Busy dates from calendar {calendar_id} for room {room.name}: {busy_dates}")
         except Exception as e:
             logger.error(f"Error fetching events from calendar {calendar_id}: {str(e)}")
-            continue
+            raise Exception(f"Error fetching events from calendar {calendar_id}: {str(e)}")
 
     return busy_dates
 
 
 def parse_event_date(date_str):
+    """
+    Parse event date string to datetime.date object.
+    """
     try:
         if 'T' in date_str:
             # DateTime format
@@ -828,14 +834,15 @@ def get_combined_busy_dates(room, check_in, check_out):
 
 def is_room_available(busy_dates, check_in, check_out):
     """
-    Verify if the room is available for the selected dates.
+    Check if a room is available given a set of busy dates.
     """
     check_in_date = check_in.date()
     check_out_date = check_out.date() - timedelta(days=1)  # Exclude the check-out date
     current_date = check_in_date
     while current_date <= check_out_date:
-        if current_date.strftime('%Y-%m-%d') in busy_dates:
-            logger.debug(f"Room not available on {current_date.strftime('%Y-%m-%d')}")
+        date_str = current_date.strftime('%Y-%m-%d')
+        if date_str in busy_dates:
+            logger.debug(f"Room not available on {date_str}")
             return False
         current_date += timedelta(days=1)
     logger.debug("Room is available for the selected dates.")
