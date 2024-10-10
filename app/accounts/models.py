@@ -1,6 +1,7 @@
 """
 This module contains the models for the accounts app.
 """
+from datetime import date
 import uuid
 
 from django.db import models
@@ -270,7 +271,7 @@ class DmsPugliaXml(models.Model):
     - created_at: Timestamp of when the XML was created
     """
     structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='dms_puglia_xml')
-    date = models.DateField()
+    date = models.DateField(default=date.today, null=True, blank=True)
     xml = models.FileField(upload_to='dms_puglia_xml/')
     created_at = models.DateTimeField(auto_now_add=True)
 
