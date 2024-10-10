@@ -275,8 +275,5 @@ class DmsPugliaXml(models.Model):
     xml = models.FileField(upload_to='dms_puglia_xml/')
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        unique_together = ('structure', 'date')  # Ensure one XML per structure and date
-
     def __str__(self):
         return f"DMS Puglia XML ({self.created_at})"
