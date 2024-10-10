@@ -15,7 +15,6 @@ import requests
 from decouple import config
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db import transaction
@@ -1050,6 +1049,8 @@ def generate_dms_puglia_xml(data, vendor):
     """
     try:
         movimento_data = data['data']  # Should be a datetime.date object
+        if isinstance(movimento_data, datetime):
+            movimento_data = movimento_data.date()
         movimento_data_str = movimento_data.strftime('%Y-%m-%d')
         structure_id = data.get('structure_id')
 
@@ -1207,6 +1208,9 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
     Save the XML content to the database inside a transaction.
     """
+    if not dms_instance.structure_id:
+        raise ValueError("Missing structure_id in DmsPugliaXml instance.")
+
     try:
         movimento_data_str = movimento_data.strftime('%Y-%m-%d')
         structure = dms_instance.structure
@@ -1215,9 +1219,10 @@ def save_xml_to_db(dms_instance, xml_content, movimento_data):
 
         content_file = ContentFile(xml_content.encode('utf-8'))
 
-        # Overwrite the existing file
+        # Overwrite the existing file or save a new one
         dms_instance.xml.save(relative_filename, content_file, save=False)
-        dms_instance.date = movimento_data  # Update the date field
+        dms_instance.date = movimento_data  # Set the date field
+
         dms_instance.save()
         logger.info(f"File saved successfully at: {dms_instance.xml.name}")
 
