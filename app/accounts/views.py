@@ -896,6 +896,14 @@ class AvailableRoomsForDatesAPI(APIView):
                 'error': 'Invalid date format or number_of_people. Use YYYY-MM-DD for dates and ensure number_of_people is an integer.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Build the Google Calendar service once
+        try:
+            service = get_google_calendar_service()
+        except Exception as e:
+            logger.error(f"Error building Google Calendar service: {str(e)}")
+            return Response({'error': 'Error connecting to Google Calendar service.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         # Filter rooms available for the selected dates and number of people from the local database
         current_time = timezone.now()
         available_rooms = Room.objects.filter(
@@ -915,7 +923,7 @@ class AvailableRoomsForDatesAPI(APIView):
         for room in available_rooms:
             try:
                 # Get combined busy dates from reservations and both Google Calendars
-                busy_dates = get_combined_busy_dates(room, check_in, check_out)
+                busy_dates = get_combined_busy_dates(room, check_in, check_out, service)
 
                 # Check if the room is available
                 is_available = is_room_available(busy_dates, check_in, check_out)

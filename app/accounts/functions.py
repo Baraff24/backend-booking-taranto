@@ -46,8 +46,9 @@ from config.settings.base import (TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID,
 
 User = django.contrib.auth.get_user_model()
 EMAIL = config('EMAIL_HOST_USER', '')
-CACHE_KEY = 'google_calendar_credentials'
-CACHE_TIMEOUT = 3600  # 1 hour cache timeout
+SERVICE_CACHE_KEY = 'google_calendar_service'
+CREDENTIALS_CACHE_KEY = 'google_calendar_credentials'
+CACHE_TIMEOUT = 3600  # One hour
 logger = logging.getLogger(__name__)
 
 
@@ -560,22 +561,78 @@ def calculate_discount(reservation):
 ## GETTING GOOGLE CALENDAR SERVICE ## START
 #####################################################################################
 
+def get_google_calendar_service():
+    """
+    Constructs and returns the Google Calendar service, with caching.
+    """
+    try:
+        # Try to get the service from cache
+        service = cache.get(SERVICE_CACHE_KEY)
+        if service:
+            logger.debug("Using cached Google Calendar service.")
+            return service
+
+        # Try to get credentials from cache
+        credentials = get_cached_credentials()
+        if not credentials:
+            # Get credentials from the database
+            credentials = get_credentials_from_db()
+            cache_credentials(credentials)
+
+        # Refresh credentials if expired
+        if credentials.expired and credentials.refresh_token:
+            logger.debug("Credentials expired. Attempting refresh.")
+            refresh_credentials(credentials)
+            cache_credentials(credentials)
+
+        # Build and cache the service
+        logger.debug("Building Google Calendar service...")
+        service = build('calendar', 'v3', credentials=credentials)
+        cache.set(SERVICE_CACHE_KEY, service, CACHE_TIMEOUT)
+        logger.info("Google Calendar service built and cached successfully.")
+        return service
+
+    except Exception as e:
+        logger.error(f"Error while setting up Google Calendar service: {e}")
+        raise Exception(f"Error setting up Google Calendar service: {str(e)}")
+
+
+def cache_credentials(credentials):
+    """
+    Cache Google Calendar credentials.
+    """
+    credentials_data = {
+        'token': credentials.token,
+        'refresh_token': credentials.refresh_token,
+        'token_uri': credentials.token_uri,
+        'client_id': credentials.client_id,
+        'client_secret': credentials.client_secret,
+        'scopes': credentials.scopes,
+        'expiry': credentials.expiry.isoformat() if credentials.expiry else None,
+    }
+    cache.set(CREDENTIALS_CACHE_KEY, json.dumps(credentials_data), CACHE_TIMEOUT)
+    logger.debug("Credentials cached successfully.")
+
+
 def get_cached_credentials():
     """
-    Retrieve the cached Google Calendar credentials.
+    Retrieve cached credentials if they exist.
     """
-    cached_credentials = cache.get(CACHE_KEY)
+    cached_credentials = cache.get(CREDENTIALS_CACHE_KEY)
     if cached_credentials:
         logger.debug("Using cached credentials.")
         credentials_data = json.loads(cached_credentials)
-        return Credentials(
+        credentials = Credentials(
             token=credentials_data['token'],
             refresh_token=credentials_data.get('refresh_token'),
             token_uri=credentials_data['token_uri'],
             client_id=credentials_data['client_id'],
             client_secret=credentials_data['client_secret'],
-            scopes=credentials_data['scopes']
+            scopes=credentials_data['scopes'],
         )
+        if credentials_data.get('expiry'):
+            credentials.expiry = datetime.fromisoformat(credentials_data['expiry'])
+        return credentials
     logger.debug("No cached credentials found.")
     return None
 
@@ -600,22 +657,6 @@ def get_credentials_from_db():
         raise Exception("Google Calendar credentials not found in the database.")
 
 
-def cache_credentials(credentials):
-    """
-    Cache the Google Calendar credentials.
-    """
-    credentials_data = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    }
-    cache.set(CACHE_KEY, json.dumps(credentials_data), CACHE_TIMEOUT)
-    logger.debug("Credentials cached successfully.")
-
-
 def update_db_token(token):
     """
     Update the token in the database.
@@ -626,13 +667,13 @@ def update_db_token(token):
 
 def refresh_credentials(credentials):
     """
-    Run the refresh token flow to obtain a new access token.
+    Refreshes the credentials if they have expired.
     """
     if credentials.expired and credentials.refresh_token:
         try:
             credentials.refresh(Request())
             logger.info("Access token refreshed successfully.")
-            # Cache and update the new token
+            # Cache and update the token in the database
             cache_credentials(credentials)
             update_db_token(credentials.token)
         except Exception as e:
@@ -640,30 +681,6 @@ def refresh_credentials(credentials):
             if "invalid_grant" in str(e):
                 raise Exception("Refresh token expired or revoked. Reauthentication required.")
             raise Exception(f"Error during token refresh: {str(e)}")
-
-
-def get_google_calendar_service():
-    """
-    Build and return the Google Calendar service.
-    """
-    try:
-        # Retrieve the cached or database credentials
-        credentials = get_cached_credentials() or get_credentials_from_db()
-
-        # Run the refresh token flow if the credentials are expired
-        if credentials.expired:
-            logger.debug("Credentials expired. Attempting refresh.")
-            refresh_credentials(credentials)
-
-        # Build and return the Google Calendar service
-        logger.debug("Building Google Calendar service...")
-        service = build('calendar', 'v3', credentials=credentials)
-        logger.info("Google Calendar service built successfully.")
-        return service
-
-    except Exception as e:
-        logger.error(f"Error while setting up Google Calendar service: {e}")
-        raise Exception(f"Error setting up Google Calendar service: {str(e)}")
 
 
 #####################################################################################
@@ -814,7 +831,7 @@ def parse_event_date(date_str):
         return None
 
 
-def get_combined_busy_dates(room, check_in, check_out):
+def get_combined_busy_dates(room, check_in, check_out, service):
     """
     Obtain the combined busy dates from the reservations and Google Calendar.
     """
@@ -823,10 +840,12 @@ def get_combined_busy_dates(room, check_in, check_out):
         busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
 
         # Obtain the busy dates from the Google Calendar
-        service = get_google_calendar_service()
         if service:
             busy_dates_calendar = get_busy_dates_from_calendars(service, room, check_in, check_out)
             busy_dates.update(busy_dates_calendar)
+        else:
+            logger.error("Google Calendar service is unavailable.")
+            raise Exception("Google Calendar service is unavailable.")
 
         logger.debug(f"Combined busy dates for room {room.name}: {busy_dates}")
         return busy_dates
