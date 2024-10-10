@@ -1049,25 +1049,32 @@ def generate_dms_puglia_xml(data, vendor):
     Generate or update a DMS Puglia XML file.
     """
     try:
-        movimento_data = data['data'].strftime('%Y-%m-%d')
+        movimento_data = data['data']  # Should be a datetime.date object
+        movimento_data_str = movimento_data.strftime('%Y-%m-%d')
         structure_id = data.get('structure_id')
 
         if not structure_id:
             raise ValueError("Missing 'structure_id' in the data.")
 
-        logger.debug(f"Structure ID: {structure_id}, Movimento Data: {movimento_data}")
+        logger.debug(f"Structure ID: {structure_id}, Movimento Data: {movimento_data_str}")
+
+        # Retrieve the structure object
+        structure = Structure.objects.get(id=structure_id)
 
         # Check for existing XML file for the same date and structure
         existing_dms_instance = DmsPugliaXml.objects.filter(
-            structure_id=structure_id,
-            xml__contains=f'data="{movimento_data}"'
+            structure=structure,
+            date=movimento_data
         ).first()
 
         if existing_dms_instance:
             return update_existing_xml(existing_dms_instance, data, movimento_data)
 
-        return create_new_xml(data, movimento_data, vendor)
+        return create_new_xml(data, movimento_data, vendor, structure)
 
+    except Structure.DoesNotExist:
+        logger.error("Structure with this id does not exist.")
+        raise ValueError("Structure with this id does not exist.")
     except Exception as e:
         logger.error(f"Error generating XML: {e}")
         raise
@@ -1121,8 +1128,12 @@ def update_existing_xml(existing_dms_instance, data, movimento_data):
         tree = ET.ElementTree(ET.fromstring(existing_xml_content))
         root = tree.getroot()
 
-        # Find or create the movimento element
-        movimento_el = find_or_create_movimento(root, data, movimento_data)
+        # Find the movimento element
+        movimento_data_str = movimento_data.strftime('%Y-%m-%d')
+        movimento_el = root.find(f"./movimento[@data='{movimento_data_str}']")
+
+        if movimento_el is None:
+            raise ValueError(f"Movimento element with date {movimento_data_str} not found in existing XML.")
 
         # Add arrivi data
         append_arrivi_to_movimento(movimento_el, data['arrivi'])
@@ -1138,12 +1149,14 @@ def update_existing_xml(existing_dms_instance, data, movimento_data):
         raise
 
 
-def create_new_xml(data, movimento_data, vendor):
+def create_new_xml(data, movimento_data, vendor, structure):
     """
     Create a new XML file in the DB for the given structure and date.
     """
     try:
         logger.debug("Creating new XML")
+        movimento_data_str = movimento_data.strftime('%Y-%m-%d')
+
         # Create the root element for the new XML
         root = ET.Element("movimenti", attrib={
             'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
@@ -1154,35 +1167,20 @@ def create_new_xml(data, movimento_data, vendor):
         # Create a new movimento element and add arrivi
         movimento_el = ET.SubElement(root, "movimento", attrib={
             'type': data['type'],
-            'data': movimento_data
+            'data': movimento_data_str
         })
         append_arrivi_to_movimento(movimento_el, data['arrivi'])
 
         # Save new XML content to the database
-        new_xml_content = ET.tostring(root, encoding="utf-8", method="xml")
-
-        if new_xml_content is None:
-            raise ValueError("Failed to generate XML content")
-
-        new_xml_content = new_xml_content.decode("utf-8")
+        new_xml_content = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
         logger.debug(f"New XML Content (decoded): {new_xml_content}")
 
-        structure_id = data.get('structure_id')
-        if not structure_id:
-            raise ValueError("Missing 'structure_id' in the data.")
-
-        # Retrieve the structure object
-        structure = Structure.objects.get(id=structure_id)
-
-        # Create the DmsPugliaXml instance with the structure
-        dms_instance = DmsPugliaXml(structure=structure)
+        # Create the DmsPugliaXml instance with the structure and date
+        dms_instance = DmsPugliaXml(structure=structure, date=movimento_data)
         save_xml_to_db(dms_instance, new_xml_content, movimento_data)
 
         return new_xml_content
 
-    except Structure.DoesNotExist:
-        logger.error(f"Structure with this id does not exist.")
-        raise ValueError(f"Structure with this id does not exist.")
     except Exception as e:
         logger.error(f"Error creating new XML: {e}")
         raise
@@ -1192,36 +1190,36 @@ def find_or_create_movimento(root, data, movimento_data):
     """
     Find or create the 'movimento' element in the XML.
     """
-    movimento_el = root.find(f"./movimento[@data='{movimento_data}']")
+    movimento_data_str = movimento_data.strftime('%Y-%m-%d')
+    movimento_el = root.find(f"./movimento[@data='{movimento_data_str}']")
     if movimento_el is not None:
         return movimento_el
 
-    # if movimento element does not exist, create a new one
+    # If movimento element does not exist, create a new one
     return ET.SubElement(root, 'movimento', attrib={
         'type': data['type'],
-        'data': movimento_data
+        'data': movimento_data_str
     })
 
 
 @transaction.atomic
 def save_xml_to_db(dms_instance, xml_content, movimento_data):
     """
-    Save the XML content to the database inside a transaction using default_storage.
+    Save the XML content to the database inside a transaction.
     """
-    if not dms_instance.structure_id:
-        raise ValueError("Missing structure_id in DmsPugliaXml instance.")
-
     try:
+        movimento_data_str = movimento_data.strftime('%Y-%m-%d')
         structure = dms_instance.structure
-        relative_filename = f'dms_puglia_xml/{structure.name}_{movimento_data}.xml'
+        relative_filename = f'dms_puglia_xml/{structure.name}_{movimento_data_str}.xml'
         logger.debug(f"Saving file: {relative_filename}")
 
         content_file = ContentFile(xml_content.encode('utf-8'))
-        saved_path = default_storage.save(relative_filename, content_file)
-        dms_instance.xml.name = saved_path
 
+        # Overwrite the existing file
+        dms_instance.xml.save(relative_filename, content_file, save=False)
+        dms_instance.date = movimento_data  # Update the date field
         dms_instance.save()
-        logger.info(f"File saved successfully at: {saved_path}")
+        logger.info(f"File saved successfully at: {dms_instance.xml.name}")
 
     except Exception as e:
         logger.error(f"Error saving XML to database: {e}")
