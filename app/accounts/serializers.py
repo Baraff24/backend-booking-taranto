@@ -157,8 +157,9 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ['id', 'name', 'room_status', 'services',
-                  'cost_per_night', 'max_people', 'structure', 'calendar_id', 'images']
-        read_only_fields = ['id', 'calendar_id']
+                  'cost_per_night', 'max_people', 'structure',
+                  'calendar_id', 'calendar_id_booking', 'images']
+        read_only_fields = ['id', 'calendar_id', 'calendar_id_booking']
 
     @staticmethod
     def validate_cost_per_night(value):

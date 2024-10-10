@@ -18,7 +18,8 @@ from .functions import (is_active, is_admin, calculate_total_cost, calculate_dis
                         cancel_reservation_and_remove_event,
                         is_room_available, handle_checkout_session_completed, parse_soap_response,
                         build_soap_envelope,
-                        send_soap_request, send_account_deletion_email, WhatsAppService, generate_dms_puglia_xml)
+                        send_soap_request, send_account_deletion_email, WhatsAppService, generate_dms_puglia_xml,
+                        get_busy_dates_from_calendars)
 from .models import User, Structure, Room, Reservation, Discount, GoogleOAuthCredentials, StructureImage, RoomImage, \
     CheckinCategoryChoices, DmsPugliaXml
 from .serializers import (UserSerializer, CompleteProfileSerializer, StructureSerializer,
@@ -942,71 +943,72 @@ class RentRoomAPI(APIView):
         user = request.user
         serializer = self.serializer_class(data=request.data)
 
-        if serializer.is_valid():
-            room = serializer.validated_data['room']
-            check_in_date = serializer.validated_data['check_in']
-            check_out_date = serializer.validated_data['check_out']
+        if not serializer.is_valid():
+            logger.warning(f"Invalid data provided by user {user.id}: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Convert check_in and check_out to datetime with time 00:00 and then to UTC
-            check_in = datetime.combine(check_in_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
-            check_out = datetime.combine(check_out_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+        room = serializer.validated_data['room']
+        check_in_date = serializer.validated_data['check_in']
+        check_out_date = serializer.validated_data['check_out']
 
-            # Update unpaid reservations that have passed the 10-minute timeout to CANCELED
-            unpaid_timeout = timezone.now() - timedelta(minutes=10)
-            Reservation.objects.filter(
-                room=room,
-                status=UNPAID,
-                created_at__lt=unpaid_timeout
-            ).update(status=CANCELED)
+        # Convert check_in and check_out to datetime with time 00:00 and then to UTC
+        check_in = datetime.combine(check_in_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+        check_out = datetime.combine(check_out_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
 
-            # Check if the room is available in the local database
-            conflicting_reservations = Reservation.objects.filter(
-                room=room,
-                check_in__lt=check_out,
-                check_out__gt=check_in
-            ).exclude(status=CANCELED)
+        # Update unpaid reservations that have passed the 10-minute timeout to CANCELED
+        unpaid_timeout = timezone.now() - timedelta(minutes=10)
+        Reservation.objects.filter(
+            room=room,
+            status=UNPAID,
+            created_at__lt=unpaid_timeout
+        ).update(status=CANCELED)
 
-            if conflicting_reservations.exists():
-                return Response({'error': 'Room is not available for the selected dates.'},
-                                status=status.HTTP_400_BAD_REQUEST)
+        # Check if the room is available in the local database
+        conflicting_reservations = Reservation.objects.filter(
+            room=room,
+            check_in__lt=check_out,
+            check_out__gt=check_in
+        ).exclude(status=CANCELED)
 
-            # Check room availability on Google Calendar
-            try:
-                service = get_google_calendar_service()
-                if not service:
-                    return Response({'error': 'Google Calendar service unavailable.'},
-                                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if conflicting_reservations.exists():
+            logger.info(f"Room {room.id} is not available in local database for dates {check_in} to {check_out}")
+            return Response({'error': 'Room is not available for the selected dates.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-                # Check for Google Calendar events that conflict with the reservation dates
-                events_result = service.events().list(
-                    calendarId=room.calendar_id,
-                    timeMin=check_in.isoformat(),
-                    timeMax=check_out.isoformat(),
-                    singleEvents=True,
-                    orderBy='startTime'
-                ).execute()
+        # Check room availability on both Google Calendars
+        try:
+            service = get_google_calendar_service()
+            if not service:
+                logger.error("Google Calendar service unavailable.")
+                return Response({'error': 'Google Calendar service unavailable.'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                events = events_result.get('items', [])
-                if events:
-                    return Response({
-                        'error': 'Room is not available for the selected dates due to existing Google Calendar events.'},
-                        status=status.HTTP_400_BAD_REQUEST)
+            busy_dates = get_busy_dates_from_calendars(service, room, check_in, check_out)
+            is_available = is_room_available(busy_dates, check_in, check_out)
 
-            except Exception as e:
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            if not is_available:
+                logger.info(f"Room {room.id} is not available on Google Calendars for dates {check_in} to {check_out}")
+                return Response({
+                    'error': 'Room is not available for the selected dates due to existing Google Calendar events.'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            # If the room is available, create the reservation
-            reservation = Reservation(**serializer.validated_data)
-            reservation.user = user
+        except Exception as e:
+            logger.error(f"Error checking Google Calendar availability: {str(e)}")
+            return Response({'error': 'Error checking room availability on Google Calendar.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # Calculate the total cost of the reservation
-            calculate_total_cost(reservation)
-            reservation.save()
+        # If the room is available, create the reservation
+        reservation = Reservation(**serializer.validated_data)
+        reservation.user = user
 
-            # Return the updated serializer to show all the fields
-            return Response(self.serializer_class(reservation).data, status=status.HTTP_201_CREATED)
+        # Calculate the total cost of the reservation
+        calculate_total_cost(reservation)
+        reservation.save()
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        logger.info(f"Reservation {reservation.id} created by user {user.id}")
+
+        # Return the updated serializer to show all the fields
+        return Response(self.serializer_class(reservation).data, status=status.HTTP_201_CREATED)
 
 
 class CalculateDiscountAPI(APIView):

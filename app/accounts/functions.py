@@ -204,7 +204,6 @@ def send_confirmation_checkout_session_completed(reservation):
     try:
         whatsapp_service = WhatsAppService()
 
-        # Prepare template parameters for the guest
         guest_template_parameters = {
             "1": reservation.user.first_name,
             "2": str(reservation.id),
@@ -229,10 +228,6 @@ def send_confirmation_checkout_session_completed(reservation):
             "8": reservation.check_out.strftime('%d-%m-%Y')
         }
 
-        # Define the Messaging Service SID for confirmation
-        # guest_template_sid = "send_confirmation_checkout_session_completed_guest"
-        # owner_template_sid = "send_confirmation_checkout_session_completed_owner"
-
         guest_template_sid = "HX658f51746eeb9ef8f4ca40c9c5c92b4c"
         owner_template_sid = "HX9da8137893a6ff24066314f6be63317b"
 
@@ -251,14 +246,14 @@ def send_confirmation_checkout_session_completed(reservation):
         )
 
         if guest_job_id and owner_job_id:
-            print(f"WhatsApp message queued successfully with job ID: {guest_job_id}")
+            logger.info(f"WhatsApp messages queued successfully with job IDs: {guest_job_id}, {owner_job_id}")
             return guest_job_id, owner_job_id
         else:
-            print("Failed to queue the WhatsApp message.")
+            logger.error("Failed to queue WhatsApp messages.")
             return None
 
     except Exception as e:
-        print(f"Failed to send WhatsApp confirmation message: {str(e)}")
+        logger.error(f"Failed to send WhatsApp confirmation message: {str(e)}")
         return None
 
 
@@ -266,7 +261,6 @@ def send_cancel_reservation_whatsapp_message(reservation):
     try:
         whatsapp_service = WhatsAppService()
 
-        # Prepare template parameters for guest and owner
         template_parameters = {
             "1": reservation.user.first_name,
             "2": str(reservation.id),
@@ -280,21 +274,15 @@ def send_cancel_reservation_whatsapp_message(reservation):
             "10": reservation.check_out.strftime('%d-%m-%Y')
         }
 
-        # Define the Messaging Service SIDs
-        # guest_template_sid = "send_cancel_reservation_whatsapp_message_guest"
-        # owner_template_sid = "send_cancel_reservation_whatsapp_message_owner"
-
         guest_template_sid = "HXde2f58fdc731d09fe91bc84ddfb3560b"
         owner_template_sid = "HX7da22de22b2f46c8b94a552eaefa0cd5"
 
-        # Queue the message for the guest
         guest_job_id = whatsapp_service.queue_message(
             reservation.phone_on_reservation,
             guest_template_sid,
             template_parameters
         )
 
-        # Queue the message for the owner
         owner_job_id = whatsapp_service.queue_message(
             OWNER_PHONE_NUMBER,
             owner_template_sid,
@@ -302,83 +290,59 @@ def send_cancel_reservation_whatsapp_message(reservation):
         )
 
         if guest_job_id and owner_job_id:
-            print(f"WhatsApp message queued successfully with job ID: {guest_job_id}")
+            logger.info(
+                f"WhatsApp cancellation messages queued successfully with job IDs: {guest_job_id}, {owner_job_id}")
             return guest_job_id, owner_job_id
         else:
-            print("Failed to queue the WhatsApp message.")
+            logger.error("Failed to queue WhatsApp cancellation messages.")
             return None
 
     except Exception as e:
-        print(f"Failed to send WhatsApp cancellation message: {str(e)}")
+        logger.error(f"Failed to send WhatsApp cancellation message: {str(e)}")
         return None
 
 
 def handle_checkout_session_completed(session):
     """
-    Function to handle checkout session completed event from Stripe
+    Manage the checkout session completed event.
     """
     try:
-        # Retrieve the payment intent ID from the session
+        # Retrieve the session ID
         session_id = session['id']
 
-        # Find the corresponding reservation
+        # Find the reservation by payment intent ID
         reservation = get_object_or_404(Reservation, payment_intent_id=session_id)
 
-        # Update the payment intent ID in the reservation
+        # Update the payment intent ID
         reservation.payment_intent_id = session['payment_intent']
 
         # Add the reservation to Google Calendar
         service = get_google_calendar_service()
-        add_reservation_to_google_calendar(service, reservation)
+        add_reservation_to_google_calendars(service, reservation)
 
         # Update the reservation status to PAID
         reservation.status = PAID
         reservation.save()
 
-        # Send a confirmation email
+        # Send a payment confirmation email
         send_payment_confirmation_email(reservation)
 
-        # Send a WhatsApp message
+        # Send a self-checkin email
         send_confirmation_checkout_session_completed(reservation)
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
     except Reservation.DoesNotExist:
+        logger.error("Reservation not found")
         return Response({"error": "Reservation not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        logger.error(f"Error in handle_checkout_session_completed: {str(e)}")
         return Response({'status': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# def handle_payment_intent_succeeded(payment_intent):
-#     """
-#     Function to handle the payment intent succeeded
-#     """
-#     try:
-#         reservation = get_object_or_404(Reservation, payment_intent_id=payment_intent['id'])
-#
-#         reservation.payment_intent_id = payment_intent['payment_intent']
-#
-#         # Add the reservation to Google Calendar
-#         service = get_google_calendar_service()
-#         add_reservation_to_google_calendar(service, reservation)
-#
-#         # Update reservation status to PAID
-#         reservation.status = PAID
-#         reservation.save()
-#
-#         # Send payment confirmation email
-#         send_payment_confirmation_email(reservation)
-#
-#         return Response({'status': 'success'}, status=status.HTTP_200_OK)
-#
-#     except Exception as e:
-#         print(f"Error in handle_payment_intent_succeeded: {e}")
-#         return Response({'status': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def send_payment_confirmation_email(reservation):
     """
-    Send a payment confirmation email to the user
+    Send a payment confirmation email to the user.
     """
     try:
         serializer = ReservationSerializer(reservation)
@@ -396,13 +360,14 @@ def send_payment_confirmation_email(reservation):
         to_email = reservation.email_on_reservation
 
         send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+        logger.info(f"Payment confirmation email sent to {to_email}")
     except Exception as e:
-        print(f"Failed to send payment confirmation email: {str(e)}")
+        logger.error(f"Failed to send payment confirmation email: {str(e)}")
 
 
 def send_self_checkin_mail(reservation):
     """
-    Send a payment confirmation email to the user
+    Send a self-checkin reminder email to the user.
     """
     try:
         serializer = ReservationSerializer(reservation)
@@ -420,8 +385,33 @@ def send_self_checkin_mail(reservation):
         to_email = reservation.email_on_reservation
 
         send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+        logger.info(f"Self check-in email sent to {to_email}")
     except Exception as e:
-        print(f"Failed to send payment confirmation email: {str(e)}")
+        logger.error(f"Failed to send self check-in email: {str(e)}")
+
+
+def send_cancel_reservation_email(reservation):
+    """
+    Send a cancellation confirmation email to the user.
+    """
+    try:
+        serializer = ReservationSerializer(reservation)
+        reservation_data = serializer.data
+
+        context = {
+            'reservation': reservation_data,
+            'current_year': timezone.now().year,
+        }
+        subject = 'Conferma di cancellazione della tua prenotazione'
+        html_message = get_template('account/stripe/cancel_reservation_email.html').render(context)
+        plain_message = strip_tags(html_message)
+        from_email = EMAIL
+        to_email = reservation.email_on_reservation
+
+        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
+        logger.info(f"Cancellation email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send cancellation email: {str(e)}")
 
 
 def send_self_checkin_whatsapp_message(reservation):
@@ -487,68 +477,39 @@ def send_self_checkin_whatsapp_message(reservation):
         return None
 
 
-def send_cancel_reservation_email(reservation):
-    """
-    Send a refund confirmation email to the user
-    """
-    try:
-        serializer = ReservationSerializer(reservation)
-        reservation_data = serializer.data
-
-        context = {
-            'reservation': reservation_data,
-            'current_year': timezone.now().year,
-        }
-        subject = 'Conferma di cancellazione della tua prenotazione'
-        html_message = get_template('account/stripe/cancel_reservation_email.html').render(context)
-        plain_message = strip_tags(html_message)
-        from_email = EMAIL
-        to_email = reservation.email_on_reservation
-
-        send_mail(subject, plain_message, from_email, [to_email], html_message=html_message)
-    except Exception as e:
-        print(f"Failed to send cancel reservation email: {str(e)}")
-
-
 def cancel_reservation_and_remove_event(reservation):
     """
-    Cancel the reservation and remove the corresponding event from Google Calendar.
+    Cancel a reservation and remove the event from Google Calendar.
     """
     try:
-        creds = GoogleOAuthCredentials.objects.get(id=1)
-        credentials = Credentials(
-            token=creds.token,
-            refresh_token=creds.refresh_token,
-            token_uri=creds.token_uri,
-            client_id=creds.client_id,
-            client_secret=creds.client_secret,
-            scopes=creds.scopes.split()
-        )
-        service = build('calendar', 'v3', credentials=credentials)
+        service = get_google_calendar_service()
 
         if reservation.event_id:
-            # Attempt to delete the event from Google Calendar
+            # Try to delete the event from the calendar associated with the reservation of django db
             service.events().delete(calendarId=reservation.room.calendar_id, eventId=reservation.event_id).execute()
+            logger.info(f"Event {reservation.event_id} deleted from calendar {reservation.room.calendar_id}")
 
-            # If deletion is successful, update reservation status and send notifications
+            # Update the reservation status to CANCELED
             reservation.status = CANCELED
             reservation.save()
 
-            # Send notifications
+            # Send a cancellation confirmation email
             send_cancel_reservation_email(reservation)
-            # send_cancel_reservation_whatsapp_message(reservation)
+            send_cancel_reservation_whatsapp_message(reservation)
         else:
+            logger.error("No event_id found for this reservation.")
             raise Exception("No event_id found for this reservation.")
     except GoogleOAuthCredentials.DoesNotExist:
+        logger.error('Google Calendar credentials not found.')
         raise Exception('Google Calendar credentials not found.')
     except Exception as e:
-        # If an exception occurs, ensure the reservation status is not altered
+        logger.error(f"Failed to remove event from Google Calendar: {str(e)}")
         raise Exception(f"Failed to remove event from Google Calendar: {str(e)}")
 
 
 def calculate_total_cost(reservation):
     """
-    Calculate the total cost of the reservation.
+    Calculate the total cost for a reservation
     """
     # Calculate the number of nights
     number_of_nights = (reservation.check_out - reservation.check_in).days
@@ -556,38 +517,40 @@ def calculate_total_cost(reservation):
     # Calculate the total cost
     total_cost = number_of_nights * reservation.room.cost_per_night
 
-    # Update the total cost field
+    # Update the total cost in the reservation
     reservation.total_cost = total_cost
     reservation.save()
 
+    logger.debug(f"Total cost calculated for reservation {reservation.id}: {total_cost}")
     return total_cost
 
 
 def calculate_discount(reservation):
     """
-    Calculate the discount of the reservation.
+    Calculate the discount for a reservation
     """
-
     try:
-        # Get the discount
+        # Retrieve the discount object
         discount = Discount.objects.get(code=reservation.coupon_used)
 
-        # Check if the discount is valid for the reservation dates
+        # Verify if the reservation dates are within the discount period
         if reservation.check_in >= discount.start_date and reservation.check_out <= discount.end_date:
             # Calculate the number of nights
             number_of_nights = (reservation.check_out - reservation.check_in).days
 
-            # Check if the number of nights is greater than or equal to the required number of nights
+            # Verify if the reservation meets the minimum number of nights for the discount
             if number_of_nights >= discount.numbers_of_nights:
-                # Calculate the discount amount
+                # Calculate the total discount amount
                 discount_amount = reservation.total_cost * (discount.discount / 100)
-                # Apply the discount
+                # Apply the discount to the reservation
                 reservation.total_cost -= discount_amount
                 reservation.save()
+                logger.info(f"Discount applied to reservation {reservation.id}: {discount_amount}")
                 return discount_amount
 
         return None
     except Discount.DoesNotExist:
+        logger.warning(f"No discount found for code {reservation.coupon_used}")
         return None
 
 
@@ -597,11 +560,11 @@ def calculate_discount(reservation):
 
 def get_cached_credentials():
     """
-    Retrieve the cached credentials if they exists
+    Retrieve the cached Google Calendar credentials.
     """
     cached_credentials = cache.get(CACHE_KEY)
     if cached_credentials:
-        logger.info("Using cached credentials.")
+        logger.debug("Using cached credentials.")
         credentials_data = json.loads(cached_credentials)
         return Credentials(
             token=credentials_data['token'],
@@ -611,7 +574,7 @@ def get_cached_credentials():
             client_secret=credentials_data['client_secret'],
             scopes=credentials_data['scopes']
         )
-    logger.info("No cached credentials found.")
+    logger.debug("No cached credentials found.")
     return None
 
 
@@ -621,14 +584,14 @@ def get_credentials_from_db():
     """
     try:
         creds = GoogleOAuthCredentials.objects.get(id=1)
-        logger.info("Credentials retrieved from database.")
+        logger.debug("Credentials retrieved from database.")
         return Credentials(
             token=creds.token,
             refresh_token=creds.refresh_token,
             token_uri=creds.token_uri,
             client_id=creds.client_id,
             client_secret=creds.client_secret,
-            scopes=creds.scopes.split()  # Convertiamo la stringa scopes in lista
+            scopes=creds.scopes.split()
         )
     except GoogleOAuthCredentials.DoesNotExist:
         logger.error("Google Calendar credentials not found in the database.")
@@ -648,26 +611,26 @@ def cache_credentials(credentials):
         'scopes': credentials.scopes
     }
     cache.set(CACHE_KEY, json.dumps(credentials_data), CACHE_TIMEOUT)
-    logger.info("Credentials cached successfully.")
+    logger.debug("Credentials cached successfully.")
 
 
 def update_db_token(token):
     """
-    Update the database with the new token.
+    Update the token in the database.
     """
     GoogleOAuthCredentials.objects.filter(id=1).update(token=token)
-    logger.info("Database updated with new token.")
+    logger.debug("Database updated with new token.")
 
 
 def refresh_credentials(credentials):
     """
-    Make a request to refresh the credentials if they are expired.
+    Run the refresh token flow to obtain a new access token.
     """
     if credentials.expired and credentials.refresh_token:
         try:
             credentials.refresh(Request())
             logger.info("Access token refreshed successfully.")
-            # Cache and update the database with the new token
+            # Cache and update the new token
             cache_credentials(credentials)
             update_db_token(credentials.token)
         except Exception as e:
@@ -682,16 +645,16 @@ def get_google_calendar_service():
     Build and return the Google Calendar service.
     """
     try:
-        # 1. Retrieve the credentials
+        # Retrieve the cached or database credentials
         credentials = get_cached_credentials() or get_credentials_from_db()
 
-        # 2. Refresh of the credentials if they are expired
+        # Run the refresh token flow if the credentials are expired
         if credentials.expired:
-            logger.info("Credentials expired. Attempting refresh.")
+            logger.debug("Credentials expired. Attempting refresh.")
             refresh_credentials(credentials)
 
-        # 3. Build and return the Google Calendar service
-        logger.info("Building Google Calendar service...")
+        # Build and return the Google Calendar service
+        logger.debug("Building Google Calendar service...")
         service = build('calendar', 'v3', credentials=credentials)
         logger.info("Google Calendar service built successfully.")
         return service
@@ -705,7 +668,7 @@ def get_google_calendar_service():
 ## GETTING GOOGLE CALENDAR SERVICE ## END
 #####################################################################################
 
-def add_reservation_to_google_calendar(service, reservation):
+def add_reservation_to_google_calendars(service, reservation):
     try:
         event = {
             'summary': f"Reservation for {reservation.first_name_on_reservation} {reservation.last_name_on_reservation}",
@@ -717,11 +680,11 @@ def add_reservation_to_google_calendar(service, reservation):
                 f"Room: {reservation.room.name}, {reservation.room.structure}"
             ),
             'start': {
-                'dateTime': reservation.check_in.isoformat() + 'T00:00:00Z',
+                'date': reservation.check_in.strftime('%Y-%m-%d'),
                 'timeZone': 'UTC',
             },
             'end': {
-                'dateTime': reservation.check_out.isoformat() + 'T00:00:00Z',
+                'date': reservation.check_out.strftime('%Y-%m-%d'),
                 'timeZone': 'UTC',
             },
             'location': reservation.room.structure.address,
@@ -736,22 +699,26 @@ def add_reservation_to_google_calendar(service, reservation):
                 ],
             },
         }
-        created_event = service.events().insert(calendarId=reservation.room.calendar_id, body=event).execute()
 
-        # Store the eventId in the reservation
+        # Add the event to the calendar associated with django
+        created_event = service.events().insert(calendarId=reservation.room.calendar_id, body=event).execute()
+        logger.info(f"Event created in calendar {reservation.room.calendar_id} with ID {created_event.get('id')}")
+
+        # Memorize the event ID in the reservation
         reservation.event_id = created_event.get('id')
         reservation.save()
 
         return created_event
     except Exception as e:
-        raise Exception(f"Failed to add reservation to Google Calendar: {str(e)}")
+        logger.error(f"Failed to add reservation to Google Calendars: {str(e)}")
+        raise Exception(f"Failed to add reservation to Google Calendars: {str(e)}")
 
 
 def get_busy_dates_from_reservations(room, check_in, check_out):
     busy_dates = set()
     current_time = timezone.now()
 
-    # Filter reservations, excluding unpaid reservations that are older than 15 minutes
+    # Filter reservations that overlap with the selected dates and are not UNPAID and older than 10 minutes
     local_reservations = Reservation.objects.filter(
         room=room,
         check_out__gte=check_in,
@@ -760,76 +727,91 @@ def get_busy_dates_from_reservations(room, check_in, check_out):
         Q(status=UNPAID) & Q(created_at__lt=(current_time - timedelta(minutes=10)))
     )
 
-    # Collect busy dates from valid reservations
+    # Collect the busy dates from the reservations
     for reservation in local_reservations:
         current_date = reservation.check_in
-        while current_date <= reservation.check_out:
+        while current_date < reservation.check_out:
             busy_dates.add(current_date.strftime('%Y-%m-%d'))
             current_date += timedelta(days=1)
+
+    logger.debug(f"Busy dates from reservations for room {room.name}: {busy_dates}")
+    return busy_dates
+
+
+def get_busy_dates_from_calendars(service, room, check_in, check_out):
+    busy_dates = set()
+    calendar_ids = [room.calendar_id, room.calendar_id_booking]
+
+    for calendar_id in filter(None, calendar_ids):
+        try:
+            events_result = service.events().list(
+                calendarId=calendar_id,
+                timeMin=check_in.isoformat() + 'Z',
+                timeMax=check_out.isoformat() + 'Z',
+                singleEvents=True,
+                orderBy='startTime'
+            ).execute()
+            events = events_result.get('items', [])
+
+            for event in events:
+                start_date_str = event['start'].get('date') or event['start'].get('dateTime')
+                end_date_str = event['end'].get('date') or event['end'].get('dateTime')
+                start_date = datetime.strptime(start_date_str[:10], '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date_str[:10], '%Y-%m-%d').date()
+                current_date = start_date
+                while current_date < end_date:
+                    busy_dates.add(current_date.strftime('%Y-%m-%d'))
+                    current_date += timedelta(days=1)
+            logger.debug(f"Busy dates from calendar {calendar_id} for room {room.name}: {busy_dates}")
+        except Exception as e:
+            logger.error(f"Error fetching events from calendar {calendar_id}: {str(e)}")
+            continue
 
     return busy_dates
 
 
 def get_combined_busy_dates(room, check_in, check_out):
     """
-    Get the combined busy dates from reservations and Google Calendar events
+    Obtain the combined busy dates from the reservations and Google Calendar.
     """
-    # Obtaining the dates occupied by reservations
-    busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
+    try:
+        # Obtain the busy dates from the reservations
+        busy_dates = get_busy_dates_from_reservations(room, check_in, check_out)
 
-    # Obtaining the dates occupied by Google Calendar events
-    service = get_google_calendar_service()
-    if service:
-        busy_dates.update(get_busy_dates_from_calendar(service, room, check_in, check_out))
+        # Obtain the busy dates from the Google Calendar
+        service = get_google_calendar_service()
+        if service:
+            busy_dates_calendar = get_busy_dates_from_calendars(service, room, check_in, check_out)
+            busy_dates.update(busy_dates_calendar)
 
-    return busy_dates
+        logger.debug(f"Combined busy dates for room {room.name}: {busy_dates}")
+        return busy_dates
+    except Exception as e:
+        logger.error(f"Error in get_combined_busy_dates: {str(e)}")
+        raise Exception(f"Error in get_combined_busy_dates: {str(e)}")
 
 
 def is_room_available(busy_dates, check_in, check_out):
     """
-    Check if a room is available given a set of busy dates.
+    Verify if the room is available for the selected dates.
     """
     check_in_date = check_in.date()
-    check_out_date = check_out.date()
-
-    return not any(
-        check_in_date <= datetime.strptime(busy_date, '%Y-%m-%d').date() <= check_out_date
-        for busy_date in busy_dates
-    )
-
-
-def get_busy_dates_from_calendar(service, room, check_in, check_out):
-    busy_dates = set()
-    events_result = service.events().list(
-        calendarId=room.calendar_id,
-        timeMin=check_in.isoformat(),
-        timeMax=check_out.isoformat(),
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
-    events = events_result.get('items', [])
-
-    for event in events:
-        event_summary = event.get('summary', '').lower()
-        room_name_in_event = room.name.lower() in event_summary
-        if room_name_in_event:
-            start_date_str = event['start'].get('dateTime', event['start'].get('date'))
-            end_date_str = event['end'].get('dateTime', event['end'].get('date'))
-            start_date = parse_datetime(start_date_str)
-            end_date = parse_datetime(end_date_str)
-            current_date = start_date
-            while current_date < end_date:
-                busy_dates.add(current_date.strftime('%Y-%m-%d'))
-                current_date += timedelta(days=1)
-    return busy_dates
+    check_out_date = check_out.date() - timedelta(days=1)  # Exclude the check-out date
+    current_date = check_in_date
+    while current_date <= check_out_date:
+        if current_date.strftime('%Y-%m-%d') in busy_dates:
+            logger.debug(f"Room not available on {current_date.strftime('%Y-%m-%d')}")
+            return False
+        current_date += timedelta(days=1)
+    logger.debug("Room is available for the selected dates.")
+    return True
 
 
 ### Utility Functions ###
 
 def build_soap_envelope(action, body_content):
     """
-    Constructs a SOAP envelope with the specified action and body content.
-    Handles both strings and XML Elements in the body_content.
+    Make a SOAP request to the Alloggiati Web service.
     """
     envelope = ET.Element('{http://www.w3.org/2003/05/soap-envelope}Envelope', attrib={
         'xmlns:soap': 'http://www.w3.org/2003/05/soap-envelope',
@@ -844,7 +826,7 @@ def build_soap_envelope(action, body_content):
             sub_element = ET.SubElement(action_element, value[0])
             sub_element.text = value[1]
         else:
-            # Directly append XML Element
+            # Add the value directly to the action element
             action_element.append(value)
 
     return ET.tostring(envelope, encoding='utf-8', method='xml')
@@ -852,34 +834,22 @@ def build_soap_envelope(action, body_content):
 
 def send_soap_request(xml_request):
     """
-    Sends the SOAP request to the Alloggiati Web service.
-
-    Args:
-        xml_request (str): The XML string of the SOAP request.
-
-    Returns:
-        str: The SOAP response content.
+    Send a SOAP request to the Alloggiati Web service.
     """
     headers = {'Content-Type': 'text/xml; charset=utf-8'}
     try:
         response = requests.post(ALLOGGIATI_WEB_URL, data=xml_request, headers=headers, timeout=10)
         response.raise_for_status()
+        logger.debug("SOAP request sent successfully.")
         return response.content
     except RequestException as e:
+        logger.error(f"Failed to connect to SOAP service: {str(e)}")
         raise ConnectionError(f"Failed to connect to SOAP service: {str(e)}")
 
 
 def parse_soap_response(xml_response, action_namespace, expected_fields):
     """
-    Parses the SOAP response from the Alloggiati Web service.
-
-    Args:
-        xml_response (bytes): XML response from the service.
-        action_namespace (str): The namespace prefix for the action.
-        expected_fields (list): List of expected fields to extract from the response.
-
-    Returns:
-        dict: A dictionary with the result of the operation.
+    Analize the SOAP response from the Alloggiati Web service.
     """
     namespaces = {
         'soap': 'http://www.w3.org/2003/05/soap-envelope',
@@ -888,10 +858,10 @@ def parse_soap_response(xml_response, action_namespace, expected_fields):
 
     root = ET.fromstring(xml_response)
 
-    # Look for the esito element
+    # Find the esito element
     esito_element = root.find(f'.//{action_namespace}:esito', namespaces)
 
-    # If esito is not found or is not 'true', collect error details
+    # If esito is not True, raise a ValidationError
     if esito_element is None or esito_element.text.strip().lower() != 'true':
         error_details = {}
         for field in expected_fields:
@@ -901,48 +871,36 @@ def parse_soap_response(xml_response, action_namespace, expected_fields):
             else:
                 error_details[field] = "Missing or empty field"
 
+        logger.error(f"SOAP Error: {error_details}")
         raise ValidationError("SOAP Error", error_details)
 
-    # If esito is 'true', or esito is not used to determine success, collect expected fields
+    # Collect the expected fields from the response
     result = {}
     for field in expected_fields:
         element = root.find(f'.//{action_namespace}:{field}', namespaces)
         result[field] = element.text.strip() if element is not None and element.text else None
 
+    logger.debug(f"SOAP response parsed successfully: {result}")
     return result
 
 
 def get_or_create_token(structure_id):
     """
-    Retrieves a valid token or creates a new one if it doesn't exist or is expired.
-
-    Args:
-        structure_id (int): ID of the structure.
-
-    Returns:
-        TokenInfoAlloggiatiWeb: The valid or newly created token.
+    Retrieve a valid token from the database or generate a new one.
     """
-    # Filter by structure_id and check that the token is not expired
     token_info = TokenInfoAlloggiatiWeb.objects.filter(expires__gt=timezone.now()).first()
 
     if token_info:
+        logger.debug("Valid token found.")
         return token_info
 
-    # Generate a new token if no valid token exists
+    logger.debug("No valid token found. Generating a new one.")
     return generate_and_send_token_alloggiati_web_request(structure_id)
 
 
-### Core Business Logic ###
-
 def generate_and_send_token_alloggiati_web_request(structure_id):
     """
-    Generates and sends a token request to the Alloggiati Web service.
-
-    Args:
-        structure_id (int): ID of the structure for which to generate a token.
-
-    Returns:
-        TokenInfoAlloggiatiWeb: The newly created token.
+    Make and send a request to the Alloggiati Web service to generate a new token.
     """
     try:
         user_info = UserAlloggiatiWeb.objects.get(structure__id=structure_id)
@@ -955,68 +913,65 @@ def generate_and_send_token_alloggiati_web_request(structure_id):
         xml_request = build_soap_envelope('{AlloggiatiService}GenerateToken', body_content)
         response_content = send_soap_request(xml_request)
 
-        # Parse the SOAP response for token details
+        # Analize the SOAP response and extract the token data
         token_data = parse_soap_response(
             response_content,
             'all',
             ['issued', 'expires', 'token']
         )
 
-        # Create and return the token record in the database
-        return TokenInfoAlloggiatiWeb.objects.create(
+        # Build and return the TokenInfoAlloggiatiWeb object
+        token_info = TokenInfoAlloggiatiWeb.objects.create(
             issued=datetime.fromisoformat(token_data['issued']),
             expires=datetime.fromisoformat(token_data['expires']),
             token=token_data['token'],
         )
+        logger.info("New token generated and saved.")
+        return token_info
 
     except UserAlloggiatiWeb.DoesNotExist:
+        logger.error(f"User information for structure_id {structure_id} not found.")
         raise ValidationError(f"User information for structure_id {structure_id} not found.")
     except Exception as e:
+        logger.error(f"An error occurred while generating the token: {str(e)}")
         raise Exception(f"An error occurred while generating the token: {str(e)}")
 
 
 def validate_elenco_schedine(structure_id, elenco_schedine):
     """
-    Validates the Elenco Schedine via the Alloggiati Web service.
-
-    Args:
-        structure_id (int): ID of the structure for which the validation is performed.
-        elenco_schedine (list): List of strings representing schedine.
-
-    Returns:
-        dict: The result of the validation process.
+    Validate the list of schedine for a structure.
     """
     try:
         user_info = UserAlloggiatiWeb.objects.get(structure__id=structure_id)
         token_info = get_or_create_token(structure_id)
 
-        body_content = {
-            'Utente': ('{AlloggiatiService}Utente', user_info.alloggiati_web_user),
-            'token': ('{AlloggiatiService}token', token_info.token),
-            'ElencoSchedine': ('{AlloggiatiService}ElencoSchedine', ''),
-        }
-
-        # Add the schedine to the request
         elenco_subelement = ET.Element('{AlloggiatiService}ElencoSchedine')
         for schedina in elenco_schedine:
             schedina_element = ET.SubElement(elenco_subelement, '{AlloggiatiService}string')
             schedina_element.text = schedina
-        body_content['ElencoSchedine'] = (
-            '{AlloggiatiService}ElencoSchedine', ET.tostring(elenco_subelement).decode('utf-8')
-        )
+
+        body_content = {
+            'Utente': ('{AlloggiatiService}Utente', user_info.alloggiati_web_user),
+            'token': ('{AlloggiatiService}token', token_info.token),
+            'ElencoSchedine': elenco_subelement,
+        }
 
         xml_request = build_soap_envelope('{AlloggiatiService}Send', body_content)
         response_content = send_soap_request(xml_request)
 
-        return parse_soap_response(
+        result = parse_soap_response(
             response_content,
             'all',
             ['Esito', 'ErroreCod', 'ErroreDes', 'ErroreDettaglio']
         )
+        logger.info(f"Elenco Schedine validation result: {result}")
+        return result
 
     except (ObjectDoesNotExist, ValidationError, ConnectionError) as e:
+        logger.error(f"Error in validate_elenco_schedine: {str(e)}")
         return {"error": str(e), "status": "failed"}
     except Exception as e:
+        logger.error(f"An unexpected error occurred: {str(e)}")
         return {"error": f"An unexpected error occurred: {str(e)}", "status": "failed"}
 
 

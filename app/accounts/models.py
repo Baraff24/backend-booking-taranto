@@ -78,6 +78,7 @@ class Room(models.Model):
     - cost_per_night: Cost per night to rent the room
     - max_people: Maximum occupancy of the room
     - calendar_id: Associated Google Calendar ID for the room
+    - calendar_id_booking: Associated Google Calendar ID for the room of Booking.com
     """
     structure = models.ForeignKey(Structure, on_delete=models.CASCADE, related_name='rooms')
     room_status = models.CharField(max_length=20, choices=ROOM_STATUS, default=AVAILABLE)
@@ -86,6 +87,7 @@ class Room(models.Model):
     cost_per_night = models.DecimalField(max_digits=10, decimal_places=2)
     max_people = models.PositiveIntegerField()
     calendar_id = models.CharField(max_length=255, blank=True, null=True)
+    calendar_id_booking = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} in {self.structure.name}"
@@ -114,6 +116,7 @@ class Reservation(models.Model):
     - user: Foreign key to the User model
     - room: Foreign key to the Room model
     - reservation_id: Unique identifier for the reservation
+    - event_id: Google Calendar event ID associated with the reservation
     - check_in: Check-in date
     - check_out: Check-out date
     - number_of_people: Number of people staying in the room
