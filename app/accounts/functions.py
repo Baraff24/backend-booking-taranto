@@ -738,19 +738,6 @@ def get_busy_dates_from_reservations(room, check_in, check_out):
     return busy_dates
 
 
-def parse_event_date(date_str):
-    try:
-        if 'T' in date_str:
-            # DateTime format
-            return datetime.fromisoformat(date_str.replace('Z', '+00:00')).date()
-        else:
-            # Date format
-            return datetime.strptime(date_str, '%Y-%m-%d').date()
-    except ValueError as e:
-        logger.error(f"Error parsing date string '{date_str}': {str(e)}")
-        return None
-
-
 def get_busy_dates_from_calendars(service, room, check_in, check_out):
     busy_dates = set()
     calendar_ids = [room.calendar_id, room.calendar_id_booking]
@@ -772,13 +759,14 @@ def get_busy_dates_from_calendars(service, room, check_in, check_out):
                 logger.debug(f"Processing event ID: {event.get('id')}, Summary: {event.get('summary')}")
 
                 # Handle events with 'date' (all-day events) and 'dateTime' (events with specific times)
-                start = event['start'].get('dateTime') or event['start'].get('date')
-                end = event['end'].get('dateTime') or event['end'].get('date')
+                start = event['start'].get('date') or event['start'].get('dateTime')
+                end = event['end'].get('date') or event['end'].get('dateTime')
 
                 if not start or not end:
                     logger.warning(f"Event {event.get('id')} has missing start or end time.")
                     continue
 
+                # Parse the start and end dates
                 start_date = parse_event_date(start)
                 end_date = parse_event_date(end)
 
@@ -786,9 +774,9 @@ def get_busy_dates_from_calendars(service, room, check_in, check_out):
                     logger.warning(f"Skipping event {event.get('id')} due to date parsing error.")
                     continue
 
-                # In some cases, end_date might be the same as start_date for all-day events
-                # Adjust end_date to include the last day
+                # For all-day events, the end date is exclusive
                 if 'date' in event['start']:
+                    # Adjust end_date to include the last day
                     end_date -= timedelta(days=1)
 
                 current_date = start_date
@@ -803,6 +791,18 @@ def get_busy_dates_from_calendars(service, room, check_in, check_out):
 
     return busy_dates
 
+
+def parse_event_date(date_str):
+    try:
+        if 'T' in date_str:
+            # DateTime format
+            return datetime.fromisoformat(date_str.replace('Z', '+00:00')).date()
+        else:
+            # Date format (all-day events)
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError as e:
+        logger.error(f"Error parsing date string '{date_str}': {str(e)}")
+        return None
 
 
 def get_combined_busy_dates(room, check_in, check_out):
