@@ -1103,7 +1103,10 @@ def append_componenti_to_arrivo(arrivo_el, componenti):
 
 
 def append_arrivi_to_movimento(movimento_el, arrivi):
-    arrivi_el = ET.SubElement(movimento_el, "arrivi")
+    # Try to find an existing <arrivi> element
+    arrivi_el = movimento_el.find('arrivi')
+    if arrivi_el is None:
+        arrivi_el = ET.SubElement(movimento_el, "arrivi")
     for arrivo in arrivi:
         arrivo_el = ET.SubElement(arrivi_el, "arrivo")
         for key in ['codice_cliente_sr', 'sesso', 'cittadinanza', 'paese_residenza',
@@ -1115,6 +1118,7 @@ def append_arrivi_to_movimento(movimento_el, arrivi):
         if arrivo.get('tipologia_alloggiato') in ['17', '18']:
             componenti = arrivo.get('componenti', [])
             append_componenti_to_arrivo(arrivo_el, componenti)
+
 
 
 def update_existing_xml(existing_dms_instance, data, movimento_data):
@@ -1148,6 +1152,7 @@ def update_existing_xml(existing_dms_instance, data, movimento_data):
     except Exception as e:
         logger.error(f"Error processing or saving existing XML: {e}")
         raise
+
 
 
 def create_new_xml(data, movimento_data, vendor, structure):
@@ -1185,7 +1190,6 @@ def create_new_xml(data, movimento_data, vendor, structure):
     except Exception as e:
         logger.error(f"Error creating new XML: {e}")
         raise
-
 
 
 def find_or_create_movimento(root, data, movimento_data):
