@@ -739,19 +739,20 @@ def get_busy_dates_from_reservations(room, check_in, check_out):
 
 
 def get_busy_dates_from_calendars(service, room, check_in, check_out):
-    """
-    Get busy dates from both Google Calendars associated with the room.
-    """
     busy_dates = set()
     calendar_ids = [room.calendar_id, room.calendar_id_booking]
 
     for calendar_id in filter(None, calendar_ids):
         try:
             logger.debug(f"Fetching events from calendar {calendar_id}")
+            # Correctly format timeMin and timeMax
+            time_min = check_in.astimezone(pytz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            time_max = check_out.astimezone(pytz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
             events_result = service.events().list(
                 calendarId=calendar_id,
-                timeMin=check_in.isoformat() + 'Z',
-                timeMax=check_out.isoformat() + 'Z',
+                timeMin=time_min,
+                timeMax=time_max,
                 singleEvents=True,
                 orderBy='startTime'
             ).execute()
